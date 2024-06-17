@@ -1,7 +1,7 @@
 //Variables generales
 let level_dificulty = 'medium';    //Dificulty multiplier    default=medium=1; easy= 0.5; hard= 1.5
-let madera = 0
-let dinero = 0
+let madera = 0;
+let dinero = 0;
 let score;
 let levelText; // Actual level Text
 let currentLfProbability=0.2; // Probability for a life item is dropped
@@ -21,7 +21,7 @@ const health=[1, 3, 5];
 //Variables del personaje
 let player; // Player variable
 let maxLifeCounter;// maximum life
-let lifecounter; // Actual life
+let lifeCounter; // Actual life
 let lifeWidthScale; // Width of life bar HUD (to show when the player is damaged)
 let life = { width: 100 }; // Life bar shown on HUD
 let speed = 600; //velocidad de las balas 
@@ -114,7 +114,7 @@ function loadLevelToPlay() {
 function doPartA() {
 
     currentPart = 1;
-    
+    insafezone = false; //Seteamos valor inicial de insafezone como false para reinicio y evtar problemas
     n = 0;
     //Datos del json
     gameData = JSON.parse(game.cache.getText('gameData'));
@@ -166,13 +166,24 @@ function updatePlayPartA() {
     game.physics.arcade.overlap(groupBullets, groupHPItems, BalaHitHp, null, this);
     game.physics.arcade.overlap(player, groupHPItems, ApHpPickup, null, this);
     game.physics.arcade.overlap(player, safeZone, playerInSafeZone, null, this);
-    game.physics.arcade.overlap(player, moneyGroup, collectMoney, null, this)
+    game.physics.arcade.overlap(player, moneyGroup, collectMoney, null, this);
+    //game.physics.arcade.overlap(player, safeZonegroup, playerLeaveSafeZone, null, this);
     //game.physics.arcade.overlap(groupEnemies, safeZone, enemyhitsafeZone, null, this)
-
+    /*if(game.physics.arcade.overlap(player, safeZone) && insafezone == false)
+    {
+        insafezone = true;
+        console.log(insafezone);
+    }*/
+    if(!game.physics.arcade.overlap(player, safeZone)  && insafezone == true)
+    {
+        insafezone = false;
+        console.log(insafezone);
+    }
 
     managePMovements();
     timeElapsed += game.time.elapsed;
     canShoot += game.time.elapsed;
+
     shootOnLeftClick();
     textTimeElapsed.setText('Tiempo: ' + Math.floor(timeElapsed / 1000));
 
@@ -187,8 +198,8 @@ function updatePlayPartA() {
     }
     
     //MODIFICACION SIN INSAFEZONE
-    if (keyR.isDown) {
-        reloadBullets();
+    if (insafezone == true && keyR.isDown) {
+       reloadBullets();
     }
 }
 
@@ -250,14 +261,17 @@ function setPermanentFiringRate() {
 
 // Función para disparar una bala al hacer clic izquierdo del ratón
 function shootOnLeftClick() {
-    if (bulletCount <= 0) {
-        return; // No disparar si se ha alcanzado el límite de balas
-    }
-
-    if (game.input.activePointer.leftButton.isDown) {
-        if (canShoot > shootDelay) {
-            shootBala(player.x, player.y);
-            canShoot = 0;
+    if(insafezone == false)
+    {
+        if (bulletCount <= 0) {
+            return; // No disparar si se ha alcanzado el límite de balas
+        }
+    
+        if (game.input.activePointer.leftButton.isDown) {
+            if (canShoot > shootDelay) {
+                shootBala(player.x, player.y);
+                canShoot = 0;
+            }
         }
     }
 }
@@ -411,11 +425,13 @@ function BalaHitAlien(bala, alien){
 function AlienHitTurret(player, alien){
     alien.kill();
     lifeCounter--;
+    console.log(lifeCounter);
     if (lifeCounter <= 0)
     {
         life.kill();
         game.state.start('defeat');
-    } else {
+    } else{
+        console.log(life.width);
         life.width -= lifeWidthScale;
     }
 }
@@ -428,8 +444,8 @@ function BalaHitHp(bala, hp){
 function ApHpPickup(player, hp){
     hp.kill();
 
-    if(lifecounter < maxLifeCounter){
-        lifecounter++;
+    if(lifeCounter < maxLifeCounter){
+        lifeCounter++;
         life.width += lifeWidthScale;
     }
 }
@@ -439,8 +455,28 @@ function ApHpPickup(player, hp){
 }*/
 
 function playerInSafeZone(player, safeZone) {
-    insafezone = true;
+    /*
+    if(game.physics.arcade.overlap(player, safeZone) && insafezone == false)
+    {
+        insafezone = true;
+        console.log(insafezone);
+    }
+    else if(!game.physics.arcade.overlap(player, safeZone)  && insafezone == true)
+    {
+        insafezone = false;
+        console.log(insafezone);
+    }
+    */
+    if(insafezone == false)
+    {
+        insafezone = true;
+        console.log(insafezone);
+    }
 }
+
+/*function playerLeaveSafeZone(player, safeZone) {
+    insafezone = false;
+}*/
 
 function setRemainingTimeInSafeZone(seconds) {
     return String(Math.trunc(seconds / 60)).padStart(2, "0") + ":" + String(seconds % 60).padStart(2, "0");
@@ -473,7 +509,6 @@ function updateTimeInSafeZone() {
 
 function reloadBullets() {
     if(insafezone){
-        insafezone = false
         bulletCount = maxBullets;
         updateBulletText();
     }
@@ -579,20 +614,19 @@ function collectResource(tree) {
 }
 
 function setDificulty(level_dificulty) {
+    console.log(level_dificulty);
     if (level_dificulty === 'easy') {
         maxLifeCounter = 5;
-        lifecounter = maxLifeCounter; // Asegúrate de inicializar lifeCounter correctamente
         currentLfProbability = 0.3;
     } else if (level_dificulty === 'medium') {
         maxLifeCounter = 3;
-        lifecounter = maxLifeCounter; // Asegúrate de inicializar lifeCounter correctamente
         currentLfProbability = 0.2;
     } else if (level_dificulty === 'hard') {
         maxLifeCounter = 1;
-        lifecounter = maxLifeCounter; // Asegúrate de inicializar lifeCounter correctamente
         currentLfProbability = 0.1;
     }
-    lifeWidthScale = life.width / maxLifeCounter; // Ajusta la escala de la barra de vida
+    lifeCounter = maxLifeCounter; // Asegúrate de inicializar lifeCounter correctamente
+    lifeWidthScale = maxLifeCounter/life.width; // Ajusta la escala de la barra de vida
 }
 
 

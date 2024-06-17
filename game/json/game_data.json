@@ -15,6 +15,6 @@
    "safeZones": [
      { "x": 1720, "y": 0, "width": 500, "height": 500, "image": "safe" },
      { "x": 500, "y": 500, "width": 400, "height": 400, "image": "safe" },
-     { "x": 3000, "y": 1600, "width": 600, "height": 600, "image": "safe" }
+     { "x": 1000, "y": 600, "width": 600, "height": 600, "image": "safe" }
    ]
  }

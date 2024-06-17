@@ -74,7 +74,7 @@ function doDifficultSelection() {
 }
 
 function playLevelA() {
-    //setDificulty();
+    setDificulty(level_dificulty);
     game.state.start('partA');
 }
 

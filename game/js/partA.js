@@ -9,7 +9,6 @@ let timeElapsed; // Time elapsed on ms
 let textTimeElapsed; // Text to show the time elapsed
 let timeElapsedEndScreen; // Time elapsed on the end screen
 let currentPart;
-
 //Constantes generales
 const LEVEL_ALIEN_PROBABILITY_PART_A = [0.3, 0.6, 0.9];
 const MULT_ALIEN_VELOCITY_PART_A = [1, 1.5, 2.2];
@@ -18,10 +17,10 @@ const BUGS_FOR_LEVEL_PART_A = [8, 12, 20]; // Bugs to kill to pass the correspon
 const NBULLETS = 50; // Bullets that can be seen on screen at the same time
 const NALIENS = 20; // Aliens that cna be seen on screen at the same time
 const TIMER_RHYTHM = 0.4 * Phaser.Timer.SECOND; // Timer to spawn enemies
-
+const health=[1, 3, 5];
 //Variables del personaje
 let player; // Player variable
-let maxLifeCounter; // maximum life
+let maxLifeCounter;// maximum life
 let lifecounter; // Actual life
 let lifeWidthScale; // Width of life bar HUD (to show when the player is damaged)
 let life = { width: 100 }; // Life bar shown on HUD
@@ -29,6 +28,8 @@ let speed = 600; //velocidad de las balas
 let canShoot=0; // Time to shoot again
 let controlsUsed = 'keyboard'; // Control to use (default keyboard)
 let objecthitbox
+let lastCollectTime = 0;
+const collectCooldown = 500; // Tiempo de espera en milisegundos para la recolección
 
 //Variables de los enemigos
 let groupEnemies; // Grupo de enemigos
@@ -47,53 +48,82 @@ let groupHPItems; // Group of HP items
 let NCOIN = 50
 let tree;
 let treeHP = 3
+let hudGroup;
 
 //zona segura
-let safezone;
-let safezones;
 let insafezone = false;
 let maxsafezonetime = 10;
 let safezonetimeleft = maxsafezonetime;
 let safezonetimer;
-
-
-//zona de recarga
-let rechargezone;
-let rechargezones;
-let inrechargezone=false;
-let recharge_timer=0;
+let safeZoneTween;
+let hudTimeInSafeZone;
+let remainingTimeInSafeZone;
+let timerClockInSafeZone;
+let safeZonegroup;
+let safeZone;
+let texto;
+let gameData;
 
 //Pantallas adicionales
 let nPages = 1; // Number of instruccion pages
+
+let cursors;
+
+let n;
 
 let partAState = {
     preload: loadPartAAssets,
     create: doPartA,
     update: updatePlayPartA
 };
-
-function loadPartAAssets() {
+function loadImage(){
     game.load.image('player', 'assets/imgs/jugador.png', 25, 15);
     game.load.image('Hup', 'assets/imgs/Hup.png');
     game.load.image('bullet', 'assets/imgs/Bala.png');
     game.load.image('tree', 'assets/imgs/arbol.png');
-    game.load.spritesheet('alien', 'assets/imgs/alienAnimacion.png', 50, 35, 2);
-    game.load.spritesheet('shoot', 'assets/imgs/Disparo_Personaje.png', 25, 15);
-    game.load.spritesheet('collect', 'assets/imgs/Recoleccion_animacion.png', 25, 15);
     game.load.image('lifebar', 'assets/imgs/vida.png');
     game.load.image('madera', 'assets/imgs/Madera.png');
     game.load.image('moneda', 'assets/imgs/Moneda.png');
     game.load.image('bg', 'assets/imgs/fondo.png');
     game.load.image('safe', 'assets/imgs/cala.jpg');
-    game.load.json('gameData', 'json/game_data.json');
-    game.load.audio('1up', 'assets/snds/1up.wav');
 }
 
+
+
+function loadAudio(){
+    game.load.audio('1up', 'assets/snds/1up.wav');
+}
+function loadSprite(){
+    game.load.spritesheet('alien', 'assets/imgs/alienAnimacion.png', 50, 35, 2);
+    game.load.spritesheet('shoot', 'assets/imgs/Disparo_Personaje.png', 25, 15);
+    game.load.spritesheet('collect', 'assets/imgs/Recoleccion_animacion.png', 25, 15);
+}
+function loadJson(){
+    //game.load.json('gameData', 'json/game_data.json');
+}
+function loadPartAAssets() {
+    loadImage();
+    loadAudio();
+    loadSprite();
+    loadLevelToPlay();
+    loadJson();
+}
+function loadLevelToPlay() {
+    game.load.text('gameData', 'json/game_data.json', true);
+}
 function doPartA() {
+
     currentPart = 1;
-    //Datos del json
-    let gameData = game.cache.getJSON('gameData');
     
+    n = 0;
+    //Datos del json
+    gameData = JSON.parse(game.cache.getText('gameData'));
+
+    safeZonegroup = game.add.group();
+    
+    safeZonegroup.enableBody = true;
+    createSafeZoneGroup();
+
     game.world.setBounds(0,0,WORLD_WIDTH,WORLD_HEIGHT)
     game.add.sprite(0,0,gameData.map.image);
     game.add.sprite(1720,0,gameData.safeZones.image);
@@ -106,24 +136,38 @@ function doPartA() {
     createTree();
     createPlayer(gameData.player)
     createLifeItems();
-    createSafeZone(gameData.safeZones)
-    //createRechargeZone(gameData.rechargeZones)
+    //createSafeZone(gameData.safeZones)
     createMoneyGroup(NCOIN);
 
-    safezonetimer = game.time.events.loop(Phaser.Timer.SECOND, updateTimeInSafeZone, this);
+    timerClockInSafeZone = game.time.events.loop(Phaser.Timer.SECOND, updateTimeInSafeZone, this);
 
     game.camera.follow(player);
     
 }
 
+function createSafeZoneGroup() {
+
+    gameData.safeZones.forEach(createSafeZone, this);
+}
+
+function createSafeZone() {
+
+    //console.log("HOLA");
+    console.log(n);
+    safeZone = safeZonegroup.create(gameData.safeZones[n].x, gameData.safeZones[n].y, 'safe');
+    safeZone.anchor.setTo(0.5, 1);
+    safeZone.scale.setTo(1, 1);
+    safeZone.body.immovable = true;
+    n++;
+}
 function updatePlayPartA() {
     game.physics.arcade.overlap(groupBullets, groupEnemies, BalaHitAlien, null, this);
     game.physics.arcade.overlap(player, groupEnemies, AlienHitTurret, null, this);
     game.physics.arcade.overlap(groupBullets, groupHPItems, BalaHitHp, null, this);
     game.physics.arcade.overlap(player, groupHPItems, ApHpPickup, null, this);
-    game.physics.arcade.overlap(player, safezone, playerInSafeZone, null, this);
+    game.physics.arcade.overlap(player, safeZone, playerInSafeZone, null, this);
     game.physics.arcade.overlap(player, moneyGroup, collectMoney, null, this)
-    game.physics.arcade.overlap(groupEnemies, safezone, enemyhitsafezone, null, this)
+    //game.physics.arcade.overlap(groupEnemies, safeZone, enemyhitsafeZone, null, this)
 
 
     managePMovements();
@@ -141,7 +185,9 @@ function updatePlayPartA() {
             collectResource(tree)
         });
     }
-    if (keyR.isDown && insafezone) {
+    
+    //MODIFICACION SIN INSAFEZONE
+    if (keyR.isDown) {
         reloadBullets();
     }
 }
@@ -264,7 +310,17 @@ function createHUD() {
 
     bulletcant = game.add.text(balasX + 40, 10, bulletCount, styleHUD);
     bulletcant.fixedToCamera = true;
+    hudGroup = game.add.group();
 
+    hudTimeInSafeZone = game.add.text(game.width - 30, 20, "TIME LEFT IN SAFE ZONE: " + setRemainingTimeInSafeZone(remainingTimeInSafeZone), {
+        font: 'bold 15pt TrashCinemaBB',
+        fill: '#F44611',
+        stroke: '#000000',
+        strokeThickness: 4
+    });
+    hudTimeInSafeZone.anchor.setTo(0, 0);
+
+    hudGroup.add(hudTimeInSafeZone);
     updateBulletText();
     updateMaderaText();
     updateDineroText();
@@ -282,8 +338,27 @@ function createHUD() {
     life.anchor.setTo(0.5, 0.5);
     life.fixedToCamera = true;
 
+    lifeWidthScale = life.width / maxLifeCounter;
+
     textTimeElapsed = game.add.text(10, 10, 'Tiempo: 0', { font: '16px Arial', fill: 'white' });
     textTimeElapsed.fixedToCamera = true;
+}
+
+function resetInput() {
+    game.input.enabled = false;
+    cursors.left.reset(true);
+    cursors.right.reset(true);
+    cursors.up.reset(true);
+    cursors.down.reset(true);
+}
+
+function resetGame() {
+    
+}
+
+function endGame() {
+    resetGame();  
+    game.state.start('defeat');  
 }
 
 function updateBulletText() {
@@ -331,10 +406,11 @@ function BalaHitAlien(bala, alien){
     enemy_count--;
 }
 
-function AlienHitTurret(player, alien){
-    lifeCounter--;
-    alien.kill();
 
+
+function AlienHitTurret(player, alien){
+    alien.kill();
+    lifeCounter--;
     if (lifeCounter <= 0)
     {
         life.kill();
@@ -364,23 +440,42 @@ function ApHpPickup(player, hp){
 
 function playerInSafeZone(player, safeZone) {
     insafezone = true;
-    safezonetimeleft = maxsafezonetime; 
-    console.log(insafezone);
 }
 
-function playerOutSafeZone(player, safeZone) {
-    insafezone = false;
-    console.log(insafezone);
+function setRemainingTimeInSafeZone(seconds) {
+    return String(Math.trunc(seconds / 60)).padStart(2, "0") + ":" + String(seconds % 60).padStart(2, "0");
+}
+
+function updateTimeInSafeZone() {
+    /*
+    if (insafezone) {
+        remainingTimeInSafeZone = Math.max(0, remainingTimeInSafeZone - 1);
+        hudTimeInSafeZone.setText("TIME LEFT IN SAFE ZONE: " + setRemainingTimeInSafeZone(remainingTimeInSafeZone));
+        safeZoneTween = game.add.tween(hudTimeInSafeZone.fill = safeTimeTextColor).to({ fill: safeTimeTextColor }, 300, Phaser.Easing.Linear.None, true);
+    }
+    
+    if (remainingTimeInSafeZone == 5) {
+        if (safeTimeTextColor == safeTimePossibleTextColors[0]) {
+            safeTimeTextColor = safeTimePossibleTextColors[1];
+        } else {
+            safeTimeTextColor = safeTimePossibleTextColors[0];
+        }
+        safeZoneTween = game.add.tween(hudTimeInSafeZone.fill = safeTimeTextColor).to({ fill: safeTimeTextColor }, 300, Phaser.Easing.Linear.None, true);
+    }
+
+    if (remainingTimeInSafeZone == 0) {
+        resetInput();
+        game.time.events.remove(timerClockInSafeZone);
+        endGame();
+    }
+    */
 }
 
 function reloadBullets() {
-    if (bulletCount < maxBullets && inrechargezone === false) {
-        inrechargezone = true;
-        game.time.events.add(Phaser.Timer.SECOND * 3, function() {
-            bulletCount = maxBullets;
-            updateBulletText();
-            inrechargezone = false;
-        }, this);
+    if(insafezone){
+        insafezone = false
+        bulletCount = maxBullets;
+        updateBulletText();
     }
 }
 
@@ -405,18 +500,17 @@ function managePMovements() {
     player.angle = Phaser.Math.wrapAngle(angle_deg) +90
 
     //Mover el personaje
-    if(inrechargezone === false){
-        if (cursors.left.isDown || keyA.isDown) {
-            player.x -= 5; // Mueve hacia la izquierda
-        } else if (cursors.right.isDown || keyD.isDown) {
-            player.x += 5; // Mueve hacia la derecha
-        }
     
-        if (cursors.up.isDown || keyW.isDown) {
-            player.y -= 5; // Mueve hacia arriba
-        } else if (cursors.down.isDown || keyS.isDown) {
-            player.y += 5; // Mueve hacia abajo
-        }
+    if (cursors.left.isDown || keyA.isDown) {
+        player.x -= 5; // Mueve hacia la izquierda
+    } else if (cursors.right.isDown || keyD.isDown) {
+        player.x += 5; // Mueve hacia la derecha
+    }
+
+    if (cursors.up.isDown || keyW.isDown) {
+        player.y -= 5; // Mueve hacia arriba
+    } else if (cursors.down.isDown || keyS.isDown) {
+        player.y += 5; // Mueve hacia abajo
     }
 
 }
@@ -456,6 +550,8 @@ function createTree(){
         let ranY = game.rnd.integerInRange(0, game.world.height);
         tree.reset(ranX, ranY);
         tree.body.immovable = true; // Hace que los árboles no se muevan al colisionar
+        tree.treeHP = 3;
+        tree.isCollected = false; 
     });
 }
 
@@ -465,83 +561,49 @@ function collectResource(tree) {
     let treeX = tree.x;
     let treeY = tree.y;
 
-    // Calcular la distancia entre el jugador y el árbol
-    if ((playerX-treeX <= 50) && (playerY-treeY <=50)) {
-        treeHP--
-        madera += 1; // Incrementar el recurso recolectado
+    if (tree.isCollected) {
+        return;
+    }
+
+    let distance = Phaser.Math.distance(playerX, playerY, treeX, treeY);
+    if (distance <= 150 && game.time.now > lastCollectTime + collectCooldown) {
+        tree.treeHP--; 
+        madera += 1;
         updateMaderaText();
-        if(treeHP == 0){
-            tree.kill();
+        lastCollectTime = game.time.now; // Actualizar el tiempo de la última recolección
+        if (tree.treeHP <= 0) {
+            tree.isCollected = true; // Marcar el árbol como recolectado
+            tree.destroy();
         }
     }
 }
 
-function setDificulty(level_dificulty){
-    if (level_dificulty == 'easy') {
+function setDificulty(level_dificulty) {
+    if (level_dificulty === 'easy') {
         maxLifeCounter = 5;
-        lifecounter = 5;
-        currentLfProbability = 0.3; // Probabilidad de obtener una vida en 'easy'
-    } else if (level_dificulty == 'medium') {
+        lifecounter = maxLifeCounter; // Asegúrate de inicializar lifeCounter correctamente
+        currentLfProbability = 0.3;
+    } else if (level_dificulty === 'medium') {
         maxLifeCounter = 3;
-        lifecounter = 3;
-        currentLfProbability = 0.2; // Probabilidad de obtener una vida en 'medium'
-    } else if (level_dificulty == 'hard') {
+        lifecounter = maxLifeCounter; // Asegúrate de inicializar lifeCounter correctamente
+        currentLfProbability = 0.2;
+    } else if (level_dificulty === 'hard') {
         maxLifeCounter = 1;
-        lifecounter = 1;
-        currentLfProbability = 0.1; // Probabilidad de obtener una vida en 'hard'
+        lifecounter = maxLifeCounter; // Asegúrate de inicializar lifeCounter correctamente
+        currentLfProbability = 0.1;
     }
-    lifeWidthScale = life.width / maxLifeCounter; // Ajustar la escala de la barra de vida
+    lifeWidthScale = life.width / maxLifeCounter; // Ajusta la escala de la barra de vida
 }
 
 
-function createSafeZone(safeZonesData) {
-    safezones = game.add.group();
-    safezones.enableBody = true;
-    safeZonesData.forEach(function(safeZoneData) {
-        let safezone = safezones.create(safeZoneData.x, safeZoneData.y, safeZoneData.image);
-        safezone.anchor.setTo(0.5, 1);
-        safezone.body.immovable = true;
-        // Añadir las colisiones de entrada y salida
-        safezone.body.onCollide = new Phaser.Signal();
-        safezone.body.onCollide.add(playerInSafeZone, this);
-        safezone.body.onCollide.add(playerOutSafeZone, this);
-    });
-}
-
-function createRechargeZone(rechargeZonesData) {        //de momento solo he copiado la anterior y he cambiado cosas
-    rechargezones = game.add.group();
-    rechargezone.enableBody = true;
-    rechargezono.forEach(function(rechargeZoneData) {
-        let rechargezone = rechargezone.create(rechargeZoneData.x, rechargeZoneData.y, rechargeZoneData.image);
-        rechargezone.anchor.setTo(0.5, 1);
-        rechargezone.body.immovable = true;
-    });
-}
-
-
-
-function updateTimeInSafeZone() {
-    if (insafezone) {
-        safezonetimeleft--;
-        if (safezonetimeleft <= 0) {
-            insafezone = false;
-        }
-    }
-}
 
 function enemyhitsafezone(groupEnemies,safezone){
-    -groupEnemies.body.velocity.x 
-    -groupEnemies.body.velocity.y
+    groupEnemies.body.velocity.x
+    groupEnemies.body.velocity.y
 }
 
 function updateRechargeTime() {
-    if (inrechargezone) {
-        recharge_timer++;
-        if (recharge_timer >= 3) {
-            inrechargezone = false;
-            recharge_timer=0;
-        }
-    }
+    
 }
 
 function updateEnemyMovements() {
@@ -562,10 +624,6 @@ function updateEnemyMovements() {
                 if (enemy.body.velocity.x === 0 && enemy.body.velocity.y === 0) {
                     enemy.body.velocity.x = game.rnd.integerInRange(-enemySpeed, enemySpeed);
                     enemy.body.velocity.y = game.rnd.integerInRange(-enemySpeed, enemySpeed);
-                }
-                if(inrechargezone){
-                    enemy.body.velocity.x = 0;
-                    enemy.body.velocity.y = 0;
                 }
             }
         });
@@ -603,9 +661,9 @@ function createAliens (numb) {
     groupEnemies.callAll('animations.play', 'animations', 'alien');
 }
 
-function resetInput() {
+/*function resetInput() {
     game.input.enabled = false;
-}
+}*/
 
 //Tienda
 
@@ -621,14 +679,14 @@ let texthabilidad3;
         strokeThickness: 4,
     });
 
-    texthabilidad2=game.add.text(680, 1600, 'Press E to buy \n  ('+levelConfig.habilidad2.cost+'zenis)',{
+    texthabilidad2=game.add.text(680, 1600, 'Press E to buy \n  ('+gameData.habilidad2.cost+'zenis)',{
         font: 'bold 13pt TrashCinemaBB',
         fill: '#F44611',
         stroke: '#000000',
         strokeThickness: 4,
         });
 
-    texthabilidad3=game.add.text(930, 1600, 'Press E to buy \n  ('+levelConfig.habilidad3.cost+'zenis)',{
+    texthabilidad3=game.add.text(930, 1600, 'Press E to buy \n  ('+gameData.habilidad3.cost+'zenis)',{
         font: 'bold 13pt TrashCinemaBB',
             fill: '#F44611',
             stroke: #000000',

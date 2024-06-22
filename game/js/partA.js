@@ -1,5 +1,5 @@
 //Variables generales
-let level_dificulty = 'medium';    //Dificulty multiplier    default=medium=1; easy= 0.5; hard= 1.5
+let level_difficulty = 'medium';    //Dificulty multiplier    default=medium=1; easy= 0.5; hard= 1.5
 let madera = 0;
 let dinero = 0;
 let score;
@@ -62,13 +62,15 @@ let safeZonegroup;
 let safeZone;
 let texto;
 let gameData;
+let gamePaused = false;
+let isReloading = false;
 
 //Pantallas adicionales
 let nPages = 1; // Number of instruccion pages
 
 let cursors;
 
-let n;
+let n = 0;
 
 let partAState = {
     preload: loadPartAAssets,
@@ -97,15 +99,12 @@ function loadSprite(){
     game.load.spritesheet('shoot', 'assets/imgs/Disparo_Personaje.png', 25, 15);
     game.load.spritesheet('collect', 'assets/imgs/Recoleccion_animacion.png', 25, 15);
 }
-function loadJson(){
-    //game.load.json('gameData', 'json/game_data.json');
-}
+
 function loadPartAAssets() {
     loadImage();
     loadAudio();
     loadSprite();
     loadLevelToPlay();
-    loadJson();
 }
 function loadLevelToPlay() {
     game.load.text('gameData', 'json/game_data.json', true);
@@ -114,7 +113,6 @@ function doPartA() {
     resetGame()
     currentPart = 1;
     insafezone = false;
-    n = 0;
     //Datos del json
     gameData = JSON.parse(game.cache.getText('gameData'));
 
@@ -125,7 +123,7 @@ function doPartA() {
     game.add.sprite(0,0,gameData.map.image);
     game.add.sprite(1720,0,gameData.safeZones.image);
 
-    setDificulty(level_dificulty); // Aplica la dificultad seleccionada
+    setDificulty(level_difficulty); // Aplica la dificultad seleccionada
     createKeyControls();
     createBalas(NBULLETS);
     createHUD();
@@ -142,22 +140,6 @@ function doPartA() {
     
 }
 
-function createSafeZoneGroup() {
-
-    gameData.safeZones.forEach(createSafeZone, this);
-}
-
-function createSafeZone() {
-    //console.log("HOLA");
-    console.log(n);
-    safeZone = safeZonegroup.create(gameData.safeZones[n].x, gameData.safeZones[n].y, 'safe');
-    safeZone.width = gameData.safeZones.width;
-    safeZone.height = gameData.safeZones.height;
-    safeZone.anchor.setTo(0.5, 1);
-    safeZone.scale.setTo(1, 1);
-    safeZone.body.immovable = true;
-    n++;
-}
 function updatePlayPartA() {
     game.physics.arcade.overlap(groupBullets, groupEnemies, BalaHitAlien, null, this);
     game.physics.arcade.overlap(player, groupEnemies, AlienHitTurret, null, this);
@@ -165,11 +147,12 @@ function updatePlayPartA() {
     game.physics.arcade.overlap(player, groupHPItems, ApHpPickup, null, this);
     game.physics.arcade.overlap(player, safeZone, playerInSafeZone, null, this);
     game.physics.arcade.overlap(player, moneyGroup, collectMoney, null, this);
-    game.physics.arcade.overlap(groupEnemies, safeZone, enemyHitSafeZone, null, this)
+    game.physics.arcade.collide(groupEnemies, safeZone, enemyHitSafeZone, null, this)
 
     if(!game.physics.arcade.overlap(player, safeZone)  && insafezone == true)
     {
         insafezone = false;
+        resetSafeZoneTimeText();
         console.log(insafezone);
     }
 
@@ -292,7 +275,7 @@ function createHUD() {
     scoreText = game.add.text(scoreX, allY, 'Score: ' + score, styleHUD);
     scoreText.fixedToCamera = true;
 
-    difficultyText = game.add.text(difficultyX, allY, 'level_dificulty', styleHUD);
+    difficultyText = game.add.text(difficultyX, allY, level_difficulty, styleHUD);
     difficultyText.fixedToCamera = true;
     
     recurso_madera = game.add.image(maderaX,10,'madera')
@@ -324,7 +307,7 @@ function createHUD() {
     updateBulletText();
     updateMaderaText();
     updateDineroText();
-    updateTimeInSafeZone()
+    updateTimeInSafeZone();
 
     // Shows "PART A" or "PART B" whenever is Part A or B when it's created the HUD
     if(currentPart == 1) {
@@ -361,6 +344,16 @@ function defeat() {
     game.time.events.remove(safezonetimer);
     game.state.start('defeat');
 }
+function victory() {
+    groupEnemies.forEach(function(enemy) {
+        enemy.kill();
+    });
+    bulletCount = 20;
+    player.kill();
+    game.time.events.remove(safezonetimer);
+    game.state.start('victory');
+}
+
 
 function updateBulletText() {
     bulletcant.setText(bulletCount);
@@ -405,6 +398,9 @@ function BalaHitAlien(bala, alien){
         createLifeItems(x,y);
     }
     enemy_count--;
+    if(score>=20){
+        victory();
+    }
 }
 
 
@@ -439,6 +435,23 @@ function ApHpPickup(player, hp){
     groupHPItems.getFirstExists(false);
 }*/
 
+function createSafeZoneGroup() {
+
+    gameData.safeZones.forEach(createSafeZone, this);
+}
+
+function createSafeZone() {
+    console.log(n);
+    safeZone = safeZonegroup.create(gameData.safeZones[n].x, gameData.safeZones[n].y, 'safe');
+    safeZone.width = gameData.safeZones.width;
+    safeZone.height = gameData.safeZones.height;
+    safeZone.anchor.setTo(0.5, 1);
+    safeZone.scale.setTo(1, 1);
+    game.physics.arcade.enable(safeZone); 
+    safeZone.body.immovable = true;
+    n++;
+}
+
 function playerInSafeZone(player, safeZone) {
     if(insafezone == false)
     {
@@ -446,6 +459,11 @@ function playerInSafeZone(player, safeZone) {
         updateTimeInSafeZone()
         console.log(insafezone);
     }
+}
+
+function enemyHitSafeZone(enemy,safezone){
+    enemy.body.velocity.x *= -1;
+    enemy.body.velocity.y *= -1;
 }
 
 function TimeLeftInSafeZone(seconds) {
@@ -457,19 +475,44 @@ function updateTimeInSafeZone() {
     if (insafezone) {
         safezonetimeleft = Math.max(0, safezonetimeleft - 1);
         safezonetimeleftText.setText("TIME LEFT IN SAFE ZONE: " + TimeLeftInSafeZone(safezonetimeleft));
-    
+    //Cuando queden 3 segundos hay que poner un sonido de alarma
         if (safezonetimeleft == 0) {
             defeat();
         }
     }
-    else 
-        safezonetimeleft = maxsafezonetime
+}
+
+function resetSafeZoneTimeText() {
+    safezonetimeleft = maxsafezonetime;
+    safezonetimeleftText.setText("TIME LEFT IN SAFE ZONE: " + TimeLeftInSafeZone(safezonetimeleft));
 }
 
 function reloadBullets() {
     if(insafezone){
-        bulletCount = maxBullets;
-        updateBulletText();
+        if (bulletCount === maxBullets) {
+            return;
+        }
+
+        isReloading = true;
+        pauseGame();
+        const bulletsPerReload = 1;
+        let bulletsReloaded = 0;
+
+        // Función para recargar balas de manera gradual
+        function reload() {
+            if (bulletCount < maxBullets) {
+                bulletCount += bulletsPerReload;
+                bulletsReloaded++;
+                updateBulletText();
+                setTimeout(reload, 500); // Pausa de medio segundo entre recargas
+            } else {
+                isReloading = false; // La recarga ha terminado
+                resumeGame();
+            }
+        }
+
+        // Inicia la primera recarga
+        reload();
     }
 }
 
@@ -480,6 +523,9 @@ function collectMoney(player, coin) {
 }
 
 function managePMovements() {
+    if (isReloading) {
+        return; // No permitir el movimiento si el jugador está recargando
+    }
     let dx = game.input.activePointer.worldX - player.x;
     let dy = game.input.activePointer.worldY - player.y;
     let keyW = game.input.keyboard.addKey(Phaser.Keyboard.W);
@@ -494,16 +540,16 @@ function managePMovements() {
     player.angle = Phaser.Math.wrapAngle(angle_deg) +90
 
     //Mover el personaje
-    
-    if (cursors.left.isDown || keyA.isDown) {
+    console.log("Current zone index (n):", n);
+    if ((cursors.left.isDown || keyA.isDown)/* && player.x >= gameData.playableZones[n].x1*/){
         player.x -= 5; // Mueve hacia la izquierda
-    } else if (cursors.right.isDown || keyD.isDown) {
+    } else if ((cursors.right.isDown || keyD.isDown) /*&& player.x <= gameData.playableZones[n].x2*/) {
         player.x += 5; // Mueve hacia la derecha
     }
 
-    if (cursors.up.isDown || keyW.isDown) {
+    if ((cursors.up.isDown || keyW.isDown) /*&& player.y <= gameData.playableZones[n].y1*/) {
         player.y -= 5; // Mueve hacia arriba
-    } else if (cursors.down.isDown || keyS.isDown) {
+    } else if ((cursors.down.isDown || keyS.isDown) /*&& player.y >= gameData.playableZones[n].y2*/) {
         player.y += 5; // Mueve hacia abajo
     }
 
@@ -572,27 +618,20 @@ function collectResource(tree) {
     }
 }
 
-function setDificulty(level_dificulty) {
-    console.log(level_dificulty);
-    if (level_dificulty === 'easy') {
+function setDificulty(level_difficulty) {
+    console.log(level_difficulty);
+    if (level_difficulty === 'easy') {
         maxLifeCounter = 5;
         currentLfProbability = 0.3;
-    } else if (level_dificulty === 'medium') {
+    } else if (level_difficulty === 'medium') {
         maxLifeCounter = 3;
         currentLfProbability = 0.2;
-    } else if (level_dificulty === 'hard') {
+    } else if (level_difficulty === 'hard') {
         maxLifeCounter = 1;
         currentLfProbability = 0.1;
     }
     lifeCounter = maxLifeCounter; // Asegúrate de inicializar lifeCounter correctamente
     lifeWidthScale = maxLifeCounter/life.width; // Ajusta la escala de la barra de vida
-}
-
-
-
-function enemyHitSafeZone(groupEnemies,safezone){
-    -groupEnemies.body.velocity.x
-    -groupEnemies.body.velocity.y
 }
 
 function updateRechargeTime() {
@@ -634,6 +673,7 @@ function createEnemies(numb) {
     for (let i = 0; i < numb; i++) {
         let enemy = groupEnemies.create(game.rnd.integerInRange(500, WORLD_WIDTH), game.rnd.integerInRange(500, WORLD_HEIGHT), 'alien');
         enemy.anchor.setTo(0.5, 0.5);
+        game.physics.arcade.enable(enemy);
         enemy.body.collideWorldBounds = true;
         enemy.body.bounce.set(1);
         enemy.body.velocity.x = game.rnd.integerInRange(-enemySpeed, enemySpeed);
@@ -652,6 +692,32 @@ function createAliens (numb) {
     groupEnemies.setAll('checkWorldBounds', true);
     groupEnemies.callAll('animations.add', 'animations', 'alien', [0, 1], 5, true);
     groupEnemies.callAll('animations.play', 'animations', 'alien');
+}
+
+
+function pauseGame() {
+    gamePaused = true;
+
+    // Pausar el movimiento de los enemigos
+    groupEnemies.forEachAlive(function(enemy) {
+        enemy.body.velocity.setTo(0, 0);
+        enemy.body.moves = false;
+    });
+
+    // Pausar cualquier otro elemento dinámico si es necesario
+    // ...
+}
+
+function resumeGame() {
+    gamePaused = false;
+
+    // Reanudar el movimiento de los enemigos
+    groupEnemies.forEachAlive(function(enemy) {
+        enemy.body.moves = true;
+    });
+
+    // Reanudar cualquier otro elemento dinámico si es necesario
+    // ...
 }
 
 //Tienda
@@ -703,5 +769,4 @@ function buyhabilidad1(){
     else{
         texthabilidad1.alpha=0;
     }
-}   
-*/
+}*/   

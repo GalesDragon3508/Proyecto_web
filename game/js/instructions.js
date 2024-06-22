@@ -1,4 +1,3 @@
-
 let instructionsState = {
     create: doInstructions
 };
@@ -22,6 +21,8 @@ let instructions = [
     "you will die due to the character lazyness"
 ];
 let currentInstructionIndex = 0;
+let Pages = 1;
+let intervalTimer;
 
 function doInstructions() {
     let bg = game.add.image(0, 0, 'bg');
@@ -31,7 +32,7 @@ function doInstructions() {
     let textBack = 'BACK';
     let textNextPg = '--- >';
     let textLastPg = '< ---';
-    let textNPages = nPages.toString();
+    let textPages = Pages.toString();
 
     let styleTextButtons = {
         fontSize: '28pt',
@@ -39,7 +40,7 @@ function doInstructions() {
         fill:'white'
     };
 
-    let styleNPages = {
+    let stylePages = {
         fontSize: '28pt',
         font: "Vintage Propagandist Regular",
         fill:'black'
@@ -63,29 +64,50 @@ function doInstructions() {
     game.add.text( btnBack.centerX, btnBack.centerY-2, textBack, styleTextButtons).anchor.setTo(0.5,0.5);
     game.add.text( btnNextPg.centerX, btnNextPg.centerY-4, textNextPg, styleTextButtons).anchor.setTo(0.5,0.5);
     game.add.text( btnLastPg.centerX, btnLastPg.centerY-4, textLastPg, styleTextButtons).anchor.setTo(0.5,0.5);
-    textShowNPage = game.add.text( GAME_WIDTH/2, btnNextPg.centerY, textNPages, styleNPages);
+    textShowNPage = game.add.text( GAME_WIDTH/2, btnNextPg.centerY, textPages, stylePages);
     textShowNPage.anchor.setTo(0.5, 0.5);
-    textShowInstructions = game.add.text(GAME_WIDTH/2, GAME_HEIGHT/2, instructions[currentInstructionIndex], styleNPages);
+    textShowInstructions = game.add.text(GAME_WIDTH/2, GAME_HEIGHT/2, instructions[currentInstructionIndex], stylePages);
     textShowInstructions.anchor.setTo(0.5, 0.5);
+
+    startAutoPageChange();
 }
 
+function startAutoPageChange() {
+    intervalTimer = setInterval(function() {
+        NextPage();
+    }, 3000); // Cambia de página cada 3 segundos
+}
+
+function stopAutoPageChange() {
+    clearInterval(intervalTimer);
+}
+
+
 function NextPage(){
-    if (nPages<3){
-        nPages++;
-        textShowNPage.setText(nPages.toString());
+    stopAutoPageChange();
+    if (Pages<3){
+        Pages++;
+        textShowNPage.setText(Pages.toString());
     }
     if (currentInstructionIndex < instructions.length - 1) {
         currentInstructionIndex++;
         textShowInstructions.setText(instructions[currentInstructionIndex]);
     }
+    startAutoPageChange();
 }
 function LastPage(){
-    if(nPages>1){
-        nPages--;
-        textShowNPage.setText(nPages.toString());
+    stopAutoPageChange();
+    if(Pages>1){
+        Pages--;
+        textShowNPage.setText(Pages.toString());
     }
     if (currentInstructionIndex > 0) {
         currentInstructionIndex--;
         textShowInstructions.setText(instructions[currentInstructionIndex]);
     }
+    startAutoPageChange();
+}
+function goMainMenu() {
+    stopAutoPageChange();
+    game.state.start('init'); 
 }

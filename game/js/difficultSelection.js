@@ -74,7 +74,7 @@ function doDifficultSelection() {
 }
 
 function playLevelA() {
-    setDificulty(level_dificulty);
+    setDificulty(level_difficulty);
     game.state.start('partA');
 }
 
@@ -87,19 +87,19 @@ function playEasy() {
     buttonEasy.alpha = 0.5;
     buttonMedium.alpha = 1;
     buttonHard.alpha = 1;
-    level_dificulty = 'easy';
+    level_difficulty = 'easy';
 }
 
 function playMedium() {
     buttonEasy.alpha = 1;
     buttonMedium.alpha = 0.5;
     buttonHard.alpha = 1;
-    level_dificulty = 'medium';
+    level_difficulty = 'medium';
 }
 
 function playHard() {
     buttonEasy.alpha = 1;
     buttonMedium.alpha = 1;
     buttonHard.alpha = 0.5;
-    level_dificulty = 'hard';
+    level_difficulty = 'hard';
 }

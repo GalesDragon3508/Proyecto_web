@@ -23,10 +23,10 @@ function doVictory() {
         fill: 'Black'
     };
 
-    game.add.text(game.world.centerX, 50, textTitle, styleText);
-    game.add.text(game.world.centerX, 150, textTime, styleText);
-    game.add.text(game.world.centerX, 250, textScore, styleText);
-    game.add.text(game.world.centerX, 350, textRestart, styleText);
+    game.add.text(GAME_WIDTH/3.5, 100, textTitle, styleText);
+    game.add.text(GAME_WIDTH/3.5, 200, textTime, styleText);
+    game.add.text(GAME_WIDTH/3.5, 300, textScore, styleText);
+    game.add.text(GAME_WIDTH/3.5, 400, textRestart, styleText);
 
     let btnMenu = game.add.button(GAME_WIDTH / 2, GAME_HEIGHT - 150, 'btn', goMainMenu);
     btnMenu.scale.setTo(0.5, 0.5);

@@ -55,10 +55,9 @@ let insafezone = false;
 let maxsafezonetime = 10;
 let safezonetimeleft = maxsafezonetime;
 let safezonetimer;
-let safeZoneTween;
+let safezonetimeleftText
 let hudTimeInSafeZone;
 let remainingTimeInSafeZone;
-let timerClockInSafeZone;
 let safeZonegroup;
 let safeZone;
 let texto;
@@ -112,19 +111,17 @@ function loadLevelToPlay() {
     game.load.text('gameData', 'json/game_data.json', true);
 }
 function doPartA() {
-
+    resetGame()
     currentPart = 1;
-    insafezone = false; //Seteamos valor inicial de insafezone como false para reinicio y evtar problemas
+    insafezone = false;
     n = 0;
     //Datos del json
     gameData = JSON.parse(game.cache.getText('gameData'));
 
     safeZonegroup = game.add.group();
-    
     safeZonegroup.enableBody = true;
-    createSafeZoneGroup();
 
-    game.world.setBounds(0,0,WORLD_WIDTH,WORLD_HEIGHT)
+    game.world.setBounds(0, 0, gameData.map.width, gameData.map.height)
     game.add.sprite(0,0,gameData.map.image);
     game.add.sprite(1720,0,gameData.safeZones.image);
 
@@ -136,10 +133,10 @@ function doPartA() {
     createTree();
     createPlayer(gameData.player)
     createLifeItems();
-    //createSafeZone(gameData.safeZones)
     createMoneyGroup(NCOIN);
+    createSafeZoneGroup();
 
-    timerClockInSafeZone = game.time.events.loop(Phaser.Timer.SECOND, updateTimeInSafeZone, this);
+    safezonetimer = game.time.events.loop(Phaser.Timer.SECOND, updateTimeInSafeZone, this);
 
     game.camera.follow(player);
     
@@ -151,10 +148,11 @@ function createSafeZoneGroup() {
 }
 
 function createSafeZone() {
-
     //console.log("HOLA");
     console.log(n);
     safeZone = safeZonegroup.create(gameData.safeZones[n].x, gameData.safeZones[n].y, 'safe');
+    safeZone.width = gameData.safeZones.width;
+    safeZone.height = gameData.safeZones.height;
     safeZone.anchor.setTo(0.5, 1);
     safeZone.scale.setTo(1, 1);
     safeZone.body.immovable = true;
@@ -167,26 +165,20 @@ function updatePlayPartA() {
     game.physics.arcade.overlap(player, groupHPItems, ApHpPickup, null, this);
     game.physics.arcade.overlap(player, safeZone, playerInSafeZone, null, this);
     game.physics.arcade.overlap(player, moneyGroup, collectMoney, null, this);
-    //game.physics.arcade.overlap(player, safeZonegroup, playerLeaveSafeZone, null, this);
-    //game.physics.arcade.overlap(groupEnemies, safeZone, enemyhitsafeZone, null, this)
-    /*if(game.physics.arcade.overlap(player, safeZone) && insafezone == false)
-    {
-        insafezone = true;
-        console.log(insafezone);
-    }*/
+    game.physics.arcade.overlap(groupEnemies, safeZone, enemyHitSafeZone, null, this)
+
     if(!game.physics.arcade.overlap(player, safeZone)  && insafezone == true)
     {
         insafezone = false;
         console.log(insafezone);
     }
 
-    managePMovements();
     timeElapsed += game.time.elapsed;
     canShoot += game.time.elapsed;
-
-    shootOnLeftClick();
     textTimeElapsed.setText('Tiempo: ' + Math.floor(timeElapsed / 1000));
-
+    
+    managePMovements();
+    shootOnLeftClick();
     updateEnemyMovements();
     spawnEnemies();
     game.camera.follow(player);
@@ -196,7 +188,7 @@ function updatePlayPartA() {
             collectResource(tree)
         });
     }
-    
+    //console.log(player.x,player.y)
     //MODIFICACION SIN INSAFEZONE
     if (insafezone == true && keyR.isDown) {
        reloadBullets();
@@ -324,20 +316,15 @@ function createHUD() {
 
     bulletcant = game.add.text(balasX + 40, 10, bulletCount, styleHUD);
     bulletcant.fixedToCamera = true;
-    hudGroup = game.add.group();
+    
+    //Quizá meterle un if para que aparezca solo cuando esta dentro de la safezone
+    safezonetimeleftText = game.add.text(GAME_WIDTH / 4, 10, `TIME LEFT IN SAFE ZONE: ${maxsafezonetime}`, { font: 'bold 15pt Arial', fill: '#F44611', stroke: '#000000', strokeThickness: 4 });
+    safezonetimeleftText.fixedToCamera = true;
 
-    hudTimeInSafeZone = game.add.text(game.width - 30, 20, "TIME LEFT IN SAFE ZONE: " + setRemainingTimeInSafeZone(remainingTimeInSafeZone), {
-        font: 'bold 15pt TrashCinemaBB',
-        fill: '#F44611',
-        stroke: '#000000',
-        strokeThickness: 4
-    });
-    hudTimeInSafeZone.anchor.setTo(0, 0);
-
-    hudGroup.add(hudTimeInSafeZone);
     updateBulletText();
     updateMaderaText();
     updateDineroText();
+    updateTimeInSafeZone()
 
     // Shows "PART A" or "PART B" whenever is Part A or B when it's created the HUD
     if(currentPart == 1) {
@@ -358,21 +345,21 @@ function createHUD() {
     textTimeElapsed.fixedToCamera = true;
 }
 
-function resetInput() {
-    game.input.enabled = false;
-    cursors.left.reset(true);
-    cursors.right.reset(true);
-    cursors.up.reset(true);
-    cursors.down.reset(true);
-}
-
 function resetGame() {
-    
+    bulletCount = 20
+    madera = 0
+    dinero = 0
+    enemy_count = 0
 }
 
-function endGame() {
-    resetGame();  
-    game.state.start('defeat');  
+function defeat() {
+    groupEnemies.forEach(function(enemy) {
+        enemy.kill();
+    });
+    bulletCount = 20;
+    player.kill();
+    game.time.events.remove(safezonetimer);
+    game.state.start('defeat');
 }
 
 function updateBulletText() {
@@ -428,10 +415,8 @@ function AlienHitTurret(player, alien){
     console.log(lifeCounter);
     if (lifeCounter <= 0)
     {
-        life.kill();
-        game.state.start('defeat');
+        defeat();
     } else{
-        console.log(life.width);
         life.width -= lifeWidthScale;
     }
 }
@@ -455,56 +440,30 @@ function ApHpPickup(player, hp){
 }*/
 
 function playerInSafeZone(player, safeZone) {
-    /*
-    if(game.physics.arcade.overlap(player, safeZone) && insafezone == false)
-    {
-        insafezone = true;
-        console.log(insafezone);
-    }
-    else if(!game.physics.arcade.overlap(player, safeZone)  && insafezone == true)
-    {
-        insafezone = false;
-        console.log(insafezone);
-    }
-    */
     if(insafezone == false)
     {
         insafezone = true;
+        updateTimeInSafeZone()
         console.log(insafezone);
     }
 }
 
-/*function playerLeaveSafeZone(player, safeZone) {
-    insafezone = false;
-}*/
-
-function setRemainingTimeInSafeZone(seconds) {
-    return String(Math.trunc(seconds / 60)).padStart(2, "0") + ":" + String(seconds % 60).padStart(2, "0");
-}
+function TimeLeftInSafeZone(seconds) {
+    let minutes = String(Math.trunc(seconds / 60)).padStart(2, "0");
+    let secs = String(seconds % 60).padStart(2, "0");
+    return `${minutes}:${secs}`;}
 
 function updateTimeInSafeZone() {
-    /*
     if (insafezone) {
-        remainingTimeInSafeZone = Math.max(0, remainingTimeInSafeZone - 1);
-        hudTimeInSafeZone.setText("TIME LEFT IN SAFE ZONE: " + setRemainingTimeInSafeZone(remainingTimeInSafeZone));
-        safeZoneTween = game.add.tween(hudTimeInSafeZone.fill = safeTimeTextColor).to({ fill: safeTimeTextColor }, 300, Phaser.Easing.Linear.None, true);
-    }
+        safezonetimeleft = Math.max(0, safezonetimeleft - 1);
+        safezonetimeleftText.setText("TIME LEFT IN SAFE ZONE: " + TimeLeftInSafeZone(safezonetimeleft));
     
-    if (remainingTimeInSafeZone == 5) {
-        if (safeTimeTextColor == safeTimePossibleTextColors[0]) {
-            safeTimeTextColor = safeTimePossibleTextColors[1];
-        } else {
-            safeTimeTextColor = safeTimePossibleTextColors[0];
+        if (safezonetimeleft == 0) {
+            defeat();
         }
-        safeZoneTween = game.add.tween(hudTimeInSafeZone.fill = safeTimeTextColor).to({ fill: safeTimeTextColor }, 300, Phaser.Easing.Linear.None, true);
     }
-
-    if (remainingTimeInSafeZone == 0) {
-        resetInput();
-        game.time.events.remove(timerClockInSafeZone);
-        endGame();
-    }
-    */
+    else 
+        safezonetimeleft = maxsafezonetime
 }
 
 function reloadBullets() {
@@ -631,9 +590,9 @@ function setDificulty(level_dificulty) {
 
 
 
-function enemyhitsafezone(groupEnemies,safezone){
-    groupEnemies.body.velocity.x
-    groupEnemies.body.velocity.y
+function enemyHitSafeZone(groupEnemies,safezone){
+    -groupEnemies.body.velocity.x
+    -groupEnemies.body.velocity.y
 }
 
 function updateRechargeTime() {
@@ -694,10 +653,6 @@ function createAliens (numb) {
     groupEnemies.callAll('animations.add', 'animations', 'alien', [0, 1], 5, true);
     groupEnemies.callAll('animations.play', 'animations', 'alien');
 }
-
-/*function resetInput() {
-    game.input.enabled = false;
-}*/
 
 //Tienda
 

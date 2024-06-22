@@ -8,13 +8,18 @@
      "startX": 1920,
      "startY": 50
    },
-   "enemies": [
-     { "type": "alien", "startX": 800, "startY": 800 },
-     { "type": "alien", "startX": 1200, "startY": 900 }
+   "normalEnemy": [
+     { "startX": 800, "startY": 800 }
    ],
+   "mimicEnemy": [
+    { "startX": 1200, "startY": 1200 }
+   ],
+   "playableZones": [
+      { "x": 0, "y": 0, "x2": 3840, "y2": 1700 },
+      { "x": 0, "y": 1700, "x2": 3840, "y2": 2160 }
+    ],
    "safeZones": [
      { "x": 1720, "y": 0, "width": 500, "height": 500, "image": "safe" },
-     { "x": 500, "y": 500, "width": 400, "height": 400, "image": "safe" },
-     { "x": 1000, "y": 600, "width": 600, "height": 600, "image": "safe" }
+     { "x": 1720, "y": 500, "width": 500, "height": 500, "image": "safe" }
    ]
  }

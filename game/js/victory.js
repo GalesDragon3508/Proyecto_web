@@ -14,6 +14,9 @@ function doVictory() {
     let textTitle = 'LEVEL COMPLETED!!!';
     let textTime = 'TIME PLAYED: ' + timeElapsed/1000;
     let textScore = 'SCORE: ' + score;
+    let textHP = 'HP LEFT: ' + lifeCounter;
+    let textMoney = 'TOTAL MONEY COLLECTED: ' + dinero;
+    let textWood = 'TOTAL WOOD COLLECTED:' + madera;
     let textRestart = 'USE ENTER TO RESTART';
     let textMenu = 'MENU';
 
@@ -23,9 +26,12 @@ function doVictory() {
         fill: 'Black'
     };
 
-    game.add.text(GAME_WIDTH/3.5, 100, textTitle, styleText);
-    game.add.text(GAME_WIDTH/3.5, 200, textTime, styleText);
-    game.add.text(GAME_WIDTH/3.5, 300, textScore, styleText);
+    game.add.text(GAME_WIDTH/3.5, 40, textTitle, styleText);
+    game.add.text(GAME_WIDTH/3.5, 100, textTime, styleText);
+    game.add.text(GAME_WIDTH/3.5, 160, textScore, styleText);
+    game.add.text(GAME_WIDTH/3.5, 220, textHP, styleText);
+    game.add.text(GAME_WIDTH/3.5, 280, textMoney, styleText);
+    game.add.text(GAME_WIDTH/3.5, 340, textWood, styleText);
     game.add.text(GAME_WIDTH/3.5, 400, textRestart, styleText);
 
     let btnMenu = game.add.button(GAME_WIDTH / 2, GAME_HEIGHT - 150, 'btn', goMainMenu);

@@ -2,6 +2,7 @@
 let level_difficulty = 'medium';    //Dificulty multiplier    default=medium=1; easy= 0.5; hard= 1.5
 let madera = 0;
 let dinero = 0;
+
 let score;
 let levelText; // Actual level Text
 let currentLfProbability=0.2; // Probability for a life item is dropped
@@ -16,6 +17,7 @@ const NUM_LEVELS_PART_A = 3;
 const BUGS_FOR_LEVEL_PART_A = [8, 12, 20]; // Bugs to kill to pass the corresponding level
 const NBULLETS = 50; // Bullets that can be seen on screen at the same time
 const NALIENS = 20; // Aliens that cna be seen on screen at the same time
+const NMIMIC = 20
 const TIMER_RHYTHM = 0.4 * Phaser.Timer.SECOND; // Timer to spawn enemies
 const health=[1, 3, 5];
 //Variables del personaje
@@ -34,7 +36,7 @@ const collectCooldown = 500; // Tiempo de espera en milisegundos para la recolec
 //Variables de los enemigos
 let groupEnemies; // Grupo de enemigos
 let enemySpeed = 100; // Velocidad de los enemigos
-let detectionRadius = 200;
+let detectionRadius = 300;
 let spawn_limit = 20;
 let enemy_count=0;
 let agressive = false;
@@ -42,7 +44,7 @@ let dinero_drop_prob = 0.4
 
 //Grupos  
 let bulletCount = 20; // Contador de balas disparadas
-const maxBullets = 20; // Max amount of bullets
+let maxBullets = 20; // Max amount of bullets
 let groupBullets; // Group of bullets
 let groupHPItems; // Group of HP items
 let NCOIN = 50
@@ -60,17 +62,40 @@ let hudTimeInSafeZone;
 let remainingTimeInSafeZone;
 let safeZonegroup;
 let safeZone;
+let buyText;
 let texto;
 let gameData;
 let gamePaused = false;
 let isReloading = false;
 
+//Sonidos
+let recargaMunicion
+let muerteJugador
+let talarArbol
+let muerteEnemigo
+let cogermoneda
+let alarma
+let abrirTienda
+let disparar
+let usoHacha
+let musicanivel
+
 //Pantallas adicionales
 let nPages = 1; // Number of instruccion pages
 
 let cursors;
-
 let n = 0;
+let shootDelay = 200;
+let isFiringRateIncreased = false;
+
+//Variables de la tienda
+let shopItems = {
+    'permanentFiringRate': { cost: 1, purchased: false },
+    'increaseMaxBullets': { cost: 2, purchased: false }
+};
+let keyB;
+let bBeingPressed = false;
+let unaCompra=false;
 
 let partAState = {
     preload: loadPartAAssets,
@@ -86,13 +111,24 @@ function loadImage(){
     game.load.image('madera', 'assets/imgs/Madera.png');
     game.load.image('moneda', 'assets/imgs/Moneda.png');
     game.load.image('bg', 'assets/imgs/fondo.png');
-    game.load.image('safe', 'assets/imgs/cala.jpg');
+    game.load.image('safe', 'assets/imgs/cala.jpeg');
 }
 
-
+function loadJson() {
+    game.load.text('gameData', 'json/game_data.json');
+}
 
 function loadAudio(){
-    game.load.audio('1up', 'assets/snds/1up.wav');
+    game.load.audio('tienda', 'assets/snds/abrirTienda.mp3');
+    game.load.audio('alarma', 'assets/snds/alarmazonasegura.mp3');
+    game.load.audio('disparo', 'assets/snds/disparo.mp3');
+    game.load.audio('muerteEnemigo', 'assets/snds/enemydies.wav');
+    game.load.audio('golpeHacha', 'assets/snds/Golpehacha.mp3');
+    game.load.audio('muerte', 'assets/snds/Personajemuere.wav');
+    game.load.audio('cogerDinero', 'assets/snds/recogermoneda.wav');
+    game.load.audio('recarga', 'assets/snds/Reload.mp3');
+    game.load.audio('talar', 'assets/snds/TalarArbol.wav');
+    game.load.audio('musica', 'assets/snds/Musica.mp3');
 }
 function loadSprite(){
     game.load.spritesheet('alien', 'assets/imgs/alienAnimacion.png', 50, 35, 2);
@@ -104,18 +140,19 @@ function loadPartAAssets() {
     loadImage();
     loadAudio();
     loadSprite();
-    loadLevelToPlay();
+    loadJson();
 }
-function loadLevelToPlay() {
-    game.load.text('gameData', 'json/game_data.json', true);
-}
+
 function doPartA() {
     resetGame()
+    musicanivel = game.add.audio('musica')
+    musicanivel.play()
+    musicanivel.volume = 0.25 
+
     currentPart = 1;
     insafezone = false;
     //Datos del json
     gameData = JSON.parse(game.cache.getText('gameData'));
-
     safeZonegroup = game.add.group();
     safeZonegroup.enableBody = true;
 
@@ -128,31 +165,42 @@ function doPartA() {
     createBalas(NBULLETS);
     createHUD();
     createAliens(NALIENS);
+    createMimicEnemies(NALIENS)
     createTree();
     createPlayer(gameData.player)
     createLifeItems();
-    createMoneyGroup(NCOIN);
+    creategrupoDinero(NCOIN);
     createSafeZoneGroup();
 
-    safezonetimer = game.time.events.loop(Phaser.Timer.SECOND, updateTimeInSafeZone, this);
+    recargaMunicion = game.add.sound('recarga');
+    muerteJugador = game.add.sound('muerte');
+    talarArbol = game.add.sound('talar');
+    muerteEnemigo = game.add.sound('muerteEnemigo');
+    cogermoneda = game.add.sound('cogerDinero');
+    alarma = game.add.sound('alarma');
+    abrirTienda = game.add.sound('tienda');
+    disparar = game.add.sound('disparo');
+    usoHacha = game.add.sound('golpeHacha');
+    musicanivel = game.add.sound('musica');
 
+    safezonetimer = game.time.events.loop(Phaser.Timer.SECOND, updateTimeInSafeZone, this);
     game.camera.follow(player);
-    
 }
 
 function updatePlayPartA() {
     game.physics.arcade.overlap(groupBullets, groupEnemies, BalaHitAlien, null, this);
-    game.physics.arcade.overlap(player, groupEnemies, AlienHitTurret, null, this);
+    game.physics.arcade.collide(player, groupEnemies, AlienHitPlayer, null, this);
     game.physics.arcade.overlap(groupBullets, groupHPItems, BalaHitHp, null, this);
     game.physics.arcade.overlap(player, groupHPItems, ApHpPickup, null, this);
-    game.physics.arcade.overlap(player, safeZone, playerInSafeZone, null, this);
-    game.physics.arcade.overlap(player, moneyGroup, collectMoney, null, this);
-    game.physics.arcade.collide(groupEnemies, safeZone, enemyHitSafeZone, null, this)
+    game.physics.arcade.overlap(player, safeZonegroup, playerInSafeZone, null, this);
+    game.physics.arcade.overlap(player, grupoDinero, collectMoney, null, this);
+    game.physics.arcade.collide(groupEnemies, safeZonegroup, enemyHitSafeZone, null, this)
 
-    if(!game.physics.arcade.overlap(player, safeZone)  && insafezone == true)
+    if(!game.physics.arcade.overlap(player, safeZonegroup)  && insafezone == true)
     {
         insafezone = false;
         resetSafeZoneTimeText();
+        unaCompra = true; 
         console.log(insafezone);
     }
 
@@ -164,9 +212,11 @@ function updatePlayPartA() {
     shootOnLeftClick();
     updateEnemyMovements();
     spawnEnemies();
+
     game.camera.follow(player);
 
     if (teclaF.isDown){
+        usoHacha.play();
         grouptree.forEach(function(tree){
             collectResource(tree)
         });
@@ -178,79 +228,106 @@ function updatePlayPartA() {
     }
 }
 
-function createKeyControls() {
-    cursors = game.input.keyboard.createCursorKeys();
-    teclaF = game.input.keyboard.addKey(Phaser.Keyboard.F);
-    game.input.onDown.add(shootOnLeftClick, this);
-    game.input.mouse.capture = true;
-    let keyE = game.input.keyboard.addKey(Phaser.Keyboard.E);
-    keyE.onDown.add(setPermanentFiringRate, this);
-    keyR = game.input.keyboard.addKey(Phaser.Keyboard.R); 
-
-}
-
-/*function hitbox(object, radius) {
-    objecthitbox.setCircle(radius);
-    objecthitbox.setOffset(-radius, -radius);
-}*/
-
 function createPlayer(){
-    player = game.add.sprite(GAME_WIDTH/2, GAME_HEIGHT/2, 'player');
+    player = game.add.sprite(gameData.player.startX, gameData.player.startY, 'player');
     game.physics.arcade.enable(player)
     player.anchor.setTo(0.5,0.8);
     player.scale.setTo(0.75,0.75);
     player.body.collideWorldBounds = true;
     player.bringToTop();
     //hitbox(player, 20)
-}    
+}
 
-function createMoneyGroup(size) {
-    moneyGroup = game.add.group();
-    moneyGroup.enableBody = true;
-    moneyGroup.createMultiple(size, 'moneda');
-    moneyGroup.callAll('events.onOutOfBounds.add', 'events.onOutOfBounds', resetMember);
-    moneyGroup.callAll('anchor.setTo', 'anchor', 0.5, 0.5);
-    moneyGroup.setAll('checkWorldBounds', true);
-    moneyGroup.forEach(function(money) {
-        game.physics.arcade.enable(money);
-        money.scale.setTo(0.3,0.3)
+function createnormalEnemies(numb) {
+    for (let i = 0; i < numb; i++) {
+        let enemyData = gameData.normalEnemy[i % gameData.normalEnemy.length]; // Usar el índice del array normalEnemy
+        let enemy = groupEnemies.create(
+            game.rnd.integerInRange(500, enemyData.startX),
+            game.rnd.integerInRange(1000, enemyData.startY),
+            'alien'
+        );        
+        enemy.anchor.setTo(0.5, 0.5);
+        game.physics.arcade.enable(enemy);
+        enemy.body.collideWorldBounds = true;
+        enemy.body.bounce.set(1);
+        enemy.body.velocity.x = game.rnd.integerInRange(-enemySpeed, enemySpeed);
+        enemy.body.velocity.y = game.rnd.integerInRange(-enemySpeed, enemySpeed);
+        enemy_count++;
+
+    }
+}
+
+function spawnEnemies(){
+    if(enemy_count<spawn_limit){
+        game.time.events.add(createnormalEnemies(1), this); // Añade 1 enemigo por cada llamada
+        game.time.events.add(createMimicEnemies(1), this); // Añade 1 enemigo por cada llamada
+    }
+}
+
+function createMimicEnemies(numb) {
+    for (let i = 0; i < numb; i++) {
+        let enemyData = gameData.mimicEnemy[i % gameData.mimicEnemy.length];
+        let enemy = groupEnemies.create(
+            game.rnd.integerInRange(800, enemyData.startX),
+            game.rnd.integerInRange(900, enemyData.startY),
+            'moneda'
+        );
+        enemy.isMimic = true; // Marcar como enemigo Mimic
+        enemy.anchor.setTo(0.5, 0.5);
+        game.physics.arcade.enable(enemy);
+        enemy.body.collideWorldBounds = true;
+        enemy.body.immovable = true; // El enemigo no se mueve hasta que se convierte
+        enemy.body.bounce.set(1);
+    }
+}
+
+function createAliens (numb) {
+    groupEnemies = game.add.group();
+    groupEnemies.enableBody = true;
+    groupEnemies.createMultiple(numb, 'alien');
+    groupEnemies.callAll('events.onOutOfBounds.add', 'events.onOutOfBounds', resetMember);
+    groupEnemies.callAll('anchor.setTo', 'anchor', 0.5, 0.5);
+    groupEnemies.setAll('checkWorldBounds', true);
+    groupEnemies.callAll('animations.add', 'animations', 'alien', [0, 1], 5, true);
+    groupEnemies.callAll('animations.play', 'animations', 'alien');
+}
+
+function creategrupoDinero(size) {
+    grupoDinero = game.add.group();
+    grupoDinero.enableBody = true;
+    grupoDinero.createMultiple(size, 'moneda');
+    grupoDinero.callAll('events.onOutOfBounds.add', 'events.onOutOfBounds', resetMember);
+    grupoDinero.callAll('anchor.setTo', 'anchor', 0.5, 0.5);
+    grupoDinero.setAll('checkWorldBounds', true);
+    grupoDinero.forEach(function(dinero) {
+        game.physics.arcade.enable(dinero);
+        dinero.scale.setTo(0.3,0.3)
     });
 }
 
 function createMoney(x, y) {
-    let money = moneyGroup.getFirstExists(false);
-    if (money) {
-        money.reset(x, y);
+    let dinero = grupoDinero.getFirstExists(false);
+    if (dinero) {
+        dinero.reset(x, y);
     }
-    return money;
+    return dinero;
 }
 
-let shootDelay = 200;
-let isFiringRateIncreased = false;
+function createTree(){
+    grouptree = game.add.group();
+    grouptree.enableBody = true;
+    grouptree.createMultiple(5, 'tree');
+    grouptree.callAll('anchor.setTo', 'anchor', 0.5, 1);
 
-// Función para alternar la tasa de disparo
-function setPermanentFiringRate() {
-    shootDelay = 100;
+    grouptree.forEach(function(tree) {
+        let ranX = game.rnd.integerInRange(0, game.world.width);
+        let ranY = game.rnd.integerInRange(0, game.world.height);
+        tree.reset(ranX, ranY);
+        tree.body.immovable = true; // Hace que los árboles no se muevan al colisionar
+        tree.treeHP = 3;
+        tree.isCollected = false; 
+    });
 }
-
-
-// Función para disparar una bala al hacer clic izquierdo del ratón
-function shootOnLeftClick() {
-    if(insafezone == false)
-    {
-        if (bulletCount <= 0) {
-            return; // No disparar si se ha alcanzado el límite de balas
-        }
-    
-        if (game.input.activePointer.leftButton.isDown) {
-            if (canShoot > shootDelay) {
-                shootBala(player.x, player.y);
-                canShoot = 0;
-            }
-        }
-    }
-}
-
 function createBalas(num){
     groupBullets = game.add.group();
     groupBullets.enableBody=true;
@@ -258,6 +335,38 @@ function createBalas(num){
     groupBullets.callAll('events.onOutOfBounds.add', 'events.onOutOfBounds', resetMember);
     groupBullets.callAll('anchor.setTo', 'anchor', 0.5, 0.5)
     groupBullets.setAll('checkWorldBounds', true);
+}
+
+function createLifeItems() {
+    groupHPItems=game.add.group();
+    groupHPItems.enableBody=true;
+    groupHPItems.createMultiple(10, 'Hup');
+    groupHPItems.callAll('events.onOutOfBounds.add', 'events.onOutOfBounds', resetMember);
+    groupHPItems.callAll('anchor.setTo', 'anchor', 0.5, 0.5)
+    groupHPItems.setAll('checkWorldBounds', true);
+}
+
+function createSafeZoneGroup() {
+
+    gameData.safeZones.forEach(createSafeZone, this);
+}
+
+function createSafeZone() {
+    console.log(n);
+    safeZone = safeZonegroup.create(gameData.safeZones[n].x, gameData.safeZones[n].y, 'safe');
+    safeZone.width = gameData.safeZones.width;
+    safeZone.height = gameData.safeZones.height;
+    safeZone.anchor.setTo(0.5, 0.5);
+    safeZone.scale.setTo(1, 1);
+    //game.physics.arcade.enable(safeZone);
+    safeZone.body.immovable = true;
+    n++;
+/*
+    buyText = game.add.text(gameData.safeZones[n].x - gameData.safeZones[n].width/2, gameData.safeZones[n].y - gameData.safeZones[n].height/2.5, "COMPRAR (B)",{
+        fill: '#FFFFFF',
+    });
+    buyText.anchor.setTo(0.5,1);
+    n++;*/
 }
 
 function createHUD() {
@@ -328,56 +437,9 @@ function createHUD() {
     textTimeElapsed.fixedToCamera = true;
 }
 
-function resetGame() {
-    bulletCount = 20
-    madera = 0
-    dinero = 0
-    enemy_count = 0
-}
-
-function defeat() {
-    groupEnemies.forEach(function(enemy) {
-        enemy.kill();
-    });
-    bulletCount = 20;
-    player.kill();
-    game.time.events.remove(safezonetimer);
-    game.state.start('defeat');
-}
-function victory() {
-    groupEnemies.forEach(function(enemy) {
-        enemy.kill();
-    });
-    bulletCount = 20;
-    player.kill();
-    game.time.events.remove(safezonetimer);
-    game.state.start('victory');
-}
-
-
-function updateBulletText() {
-    bulletcant.setText(bulletCount);
-}
-
-function updateMaderaText() {
-    maderacant.setText(madera);
-}
-
-function updateDineroText() {
-    dinerocant.setText(dinero);
-}
-
-function createLifeItems() {
-    groupHPItems=game.add.group();
-    groupHPItems.enableBody=true;
-    groupHPItems.createMultiple(10, 'Hup');
-    groupHPItems.callAll('events.onOutOfBounds.add', 'events.onOutOfBounds', resetMember);
-    groupHPItems.callAll('anchor.setTo', 'anchor', 0.5, 0.5)
-    groupHPItems.setAll('checkWorldBounds', true);
-}
-
-function goMainMenu(button) {
-    game.state.start('init');
+function enemyHitSafeZone(enemy,safezone){
+    enemy.body.velocity.x *= -1;
+    enemy.body.velocity.y *= -1;
 }
 
 function BalaHitAlien(bala, alien){
@@ -385,6 +447,7 @@ function BalaHitAlien(bala, alien){
     let y= alien.y;
     alien.kill();
     bala.kill();
+    muerteEnemigo.play();
 
     let randomnumber = Math.random();
 
@@ -398,14 +461,12 @@ function BalaHitAlien(bala, alien){
         createLifeItems(x,y);
     }
     enemy_count--;
-    if(score>=20){
+    if(score>=100){
         victory();
     }
 }
 
-
-
-function AlienHitTurret(player, alien){
+function AlienHitPlayer(player, alien){
     alien.kill();
     lifeCounter--;
     console.log(lifeCounter);
@@ -431,60 +492,115 @@ function ApHpPickup(player, hp){
     }
 }
 
-/*function ApHpPickup (x, y) {
-    groupHPItems.getFirstExists(false);
-}*/
-
-function createSafeZoneGroup() {
-
-    gameData.safeZones.forEach(createSafeZone, this);
-}
-
-function createSafeZone() {
-    console.log(n);
-    safeZone = safeZonegroup.create(gameData.safeZones[n].x, gameData.safeZones[n].y, 'safe');
-    safeZone.width = gameData.safeZones.width;
-    safeZone.height = gameData.safeZones.height;
-    safeZone.anchor.setTo(0.5, 1);
-    safeZone.scale.setTo(1, 1);
-    game.physics.arcade.enable(safeZone); 
-    safeZone.body.immovable = true;
-    n++;
-}
-
 function playerInSafeZone(player, safeZone) {
     if(insafezone == false)
     {
         insafezone = true;
-        updateTimeInSafeZone()
-        console.log(insafezone);
+        bPressedOnce = true;
+        updateTimeInSafeZone();
+        //console.log(gameData.safeZones[0].x);
+        //console.log(insafezone);
+    }
+
+    //Ir a la otra zona segura al comprar
+    else if (bPressedOnce == true && keyB.isDown) {
+        openShop();
+        bPressedOnce = false;
+        console.log(gameData.safeZones[0].x);
+        console.log(gameData.safeZones[1].x);
+        console.log(safeZone.x);
+        
+        if(gameData.safeZones[0].x == safeZone.x)
+        {
+            console.log(safeZone.x);
+            player.x = gameData.safeZones[1].x;
+            player.y = gameData.safeZones[1].y;
+        }
+        else
+        {
+            console.log(safeZone.y);
+            player.x = gameData.safeZones[0].x;
+            player.y = gameData.safeZones[0].y;
+        }
+
+        
     }
 }
 
-function enemyHitSafeZone(enemy,safezone){
-    enemy.body.velocity.x *= -1;
-    enemy.body.velocity.y *= -1;
+function collectMoney(player, coin) {
+    cogermoneda.play();
+    coin.kill();
+    dinero += 1;
+    totalDinero += 1;
+    updateDineroText();
 }
+
+// Función para alternar la tasa de disparo
+function setPermanentFiringRate() {
+    shootDelay = 100;
+    //maxBullets=40;
+}
+
+function setBulletsAmount() {
+    maxBullets = 40;
+}
+
+
+
+function resetGame() {
+    bulletCount = 20
+    madera = 0
+    dinero = 0
+    totalDinero = 0
+    totalMadera = 0
+    enemy_count = 0
+    score = 0
+    n = 0
+}
+
+function updateBulletText() {
+    bulletcant.setText(bulletCount);
+}
+
+function updateMaderaText() {
+    maderacant.setText(madera);
+}
+
+function updateDineroText() {
+    dinerocant.setText(dinero);
+}
+
+function resetSafeZoneTimeText() {
+    alarma.stop()
+    safezonetimeleft = maxsafezonetime;
+    safezonetimeleftText.setText("TIME LEFT IN SAFE ZONE: " + TimeLeftInSafeZone(safezonetimeleft));
+}
+
+/*function ApHpPickup (x, y) {
+    groupHPItems.getFirstExists(false);
+}*/
+
 
 function TimeLeftInSafeZone(seconds) {
     let minutes = String(Math.trunc(seconds / 60)).padStart(2, "0");
     let secs = String(seconds % 60).padStart(2, "0");
-    return `${minutes}:${secs}`;}
+    return `${minutes}:${secs}`;
+}
 
 function updateTimeInSafeZone() {
     if (insafezone) {
         safezonetimeleft = Math.max(0, safezonetimeleft - 1);
         safezonetimeleftText.setText("TIME LEFT IN SAFE ZONE: " + TimeLeftInSafeZone(safezonetimeleft));
-    //Cuando queden 3 segundos hay que poner un sonido de alarma
+
+        if(safezonetimeleft <=3){
+            alarma.play();
+            alarma.volume = 0.4;
+        }
+        
         if (safezonetimeleft == 0) {
             defeat();
         }
     }
-}
-
-function resetSafeZoneTimeText() {
-    safezonetimeleft = maxsafezonetime;
-    safezonetimeleftText.setText("TIME LEFT IN SAFE ZONE: " + TimeLeftInSafeZone(safezonetimeleft));
 }
 
 function reloadBullets() {
@@ -493,6 +609,7 @@ function reloadBullets() {
             return;
         }
 
+        recargaMunicion.play();
         isReloading = true;
         pauseGame();
         const bulletsPerReload = 1;
@@ -516,10 +633,38 @@ function reloadBullets() {
     }
 }
 
-function collectMoney(player, coin) {
-    coin.kill();
-    dinero += 1;
-    updateDineroText();
+
+function openShop() {
+
+    if (insafezone) {
+        abrirTienda.play();
+        
+        if (!unaCompra && dinero >= shopItems.permanentFiringRate.cost && !shopItems.permanentFiringRate.purchased) {
+            dinero -= shopItems.permanentFiringRate.cost;
+            updateDineroText();
+            shopItems.permanentFiringRate.purchased = true;
+            setPermanentFiringRate();
+            unaCompra=false;
+            console.log("Habilidad de tasa de disparo permanente comprada");
+        } else if (unaCompra && dinero >= shopItems.increaseMaxBullets.cost && shopItems.permanentFiringRate.purchased && !shopItems.increaseMaxBullets.purchased) {
+            dinero -= shopItems.increaseMaxBullets.cost;
+            shopItems.increaseMaxBullets.purchased = true;
+            setBulletsAmount();
+            console.log('Balas');
+            unaCompra=false;
+        }
+    }
+}
+
+function createKeyControls() {
+    cursors = game.input.keyboard.createCursorKeys();
+    teclaF = game.input.keyboard.addKey(Phaser.Keyboard.F);
+    game.input.onDown.add(shootOnLeftClick, this);
+    game.input.mouse.capture = true;
+    keyR = game.input.keyboard.addKey(Phaser.Keyboard.R);
+    keyB = game.input.keyboard.addKey(Phaser.Keyboard.B);
+    keyB.onDown.add(openShop, this); 
+
 }
 
 function managePMovements() {
@@ -540,7 +685,7 @@ function managePMovements() {
     player.angle = Phaser.Math.wrapAngle(angle_deg) +90
 
     //Mover el personaje
-    console.log("Current zone index (n):", n);
+    //console.log("Current zone index (n):", n);
     if ((cursors.left.isDown || keyA.isDown)/* && player.x >= gameData.playableZones[n].x1*/){
         player.x -= 5; // Mueve hacia la izquierda
     } else if ((cursors.right.isDown || keyD.isDown) /*&& player.x <= gameData.playableZones[n].x2*/) {
@@ -555,8 +700,48 @@ function managePMovements() {
 
 }
 
-function resetMember(item) {
-    item.kill();
+// Función para disparar una bala al hacer clic izquierdo del ratón
+function shootOnLeftClick() {
+    if(insafezone == false)
+    {
+
+        if (bulletCount <= 0) {
+            return; // No disparar si se ha alcanzado el límite de balas
+        }
+    
+        if (game.input.activePointer.leftButton.isDown) {
+            if (canShoot > shootDelay) {
+                disparar.play();
+                shootBala(player.x, player.y);
+                canShoot = 0;
+            }
+        }
+    }
+}
+
+function collectResource(tree) {
+    let playerX = player.x;
+    let playerY = player.y;
+    let treeX = tree.x;
+    let treeY = tree.y;
+
+    if (tree.isCollected) {
+        return;
+    }
+
+    let distance = Phaser.Math.distance(playerX, playerY, treeX, treeY);
+    if (distance <= 150 && game.time.now > lastCollectTime + collectCooldown) {
+        talarArbol.play();
+        tree.treeHP--; 
+        madera += 1;
+        totalMadera+=1;
+        updateMaderaText();
+        lastCollectTime = game.time.now; // Actualizar el tiempo de la última recolección
+        if (tree.treeHP <= 0) {
+            tree.isCollected = true; // Marcar el árbol como recolectado
+            tree.destroy();
+        }
+    }
 }
 
 function shootBala (x, y) {
@@ -577,45 +762,6 @@ function shootBala (x, y) {
         updateBulletText();  
     }
     return shot;// Código para disparar una bala
-} 
-
-function createTree(){
-    grouptree = game.add.group();
-    grouptree.enableBody = true;
-    grouptree.createMultiple(5, 'tree');
-    grouptree.callAll('anchor.setTo', 'anchor', 0.5, 1);
-
-    grouptree.forEach(function(tree) {
-        let ranX = game.rnd.integerInRange(0, game.world.width);
-        let ranY = game.rnd.integerInRange(0, game.world.height);
-        tree.reset(ranX, ranY);
-        tree.body.immovable = true; // Hace que los árboles no se muevan al colisionar
-        tree.treeHP = 3;
-        tree.isCollected = false; 
-    });
-}
-
-function collectResource(tree) {
-    let playerX = player.x;
-    let playerY = player.y;
-    let treeX = tree.x;
-    let treeY = tree.y;
-
-    if (tree.isCollected) {
-        return;
-    }
-
-    let distance = Phaser.Math.distance(playerX, playerY, treeX, treeY);
-    if (distance <= 150 && game.time.now > lastCollectTime + collectCooldown) {
-        tree.treeHP--; 
-        madera += 1;
-        updateMaderaText();
-        lastCollectTime = game.time.now; // Actualizar el tiempo de la última recolección
-        if (tree.treeHP <= 0) {
-            tree.isCollected = true; // Marcar el árbol como recolectado
-            tree.destroy();
-        }
-    }
 }
 
 function setDificulty(level_difficulty) {
@@ -641,59 +787,64 @@ function updateRechargeTime() {
 function updateEnemyMovements() {
     if (groupEnemies) {
         groupEnemies.forEachAlive(function(enemy) {
-            let distanceToPlayer = game.physics.arcade.distanceBetween(player, enemy);
-            if (distanceToPlayer < detectionRadius && !agressive) {
-                agressive = true; // Cambiar estado a agresivo
-            }
-            else if (distanceToPlayer >= detectionRadius || insafezone == true) {
-                agressive = false; // Cambiar estado a normal
-            }
-
-            if (agressive) {
-                game.physics.arcade.moveToObject(enemy, player, enemySpeed);
-            }
-            else {
-                if (enemy.body.velocity.x === 0 && enemy.body.velocity.y === 0) {
+            if (enemy.isMimic) {
+                let distanceToPlayer = game.physics.arcade.distanceBetween(player, enemy);
+                if (distanceToPlayer < detectionRadius) {
+                    // Cambiar el sprite y comportamiento a enemigo normal
+                    enemy.loadTexture('alien', 0);
+                    enemy.isMimic = false;
+                    enemy.body.immovable = false;
                     enemy.body.velocity.x = game.rnd.integerInRange(-enemySpeed, enemySpeed);
                     enemy.body.velocity.y = game.rnd.integerInRange(-enemySpeed, enemySpeed);
                 }
             }
+            else{
+                let distanceToPlayer = game.physics.arcade.distanceBetween(player, enemy);
+                if (distanceToPlayer < detectionRadius && !agressive) {
+                    agressive = true; // Cambiar estado a agresivo
+                }
+                else if (distanceToPlayer >= detectionRadius || insafezone == true) {
+                    agressive = false; // Cambiar estado a normal
+                }
+
+                if (agressive) {
+                    game.physics.arcade.moveToObject(enemy, player, enemySpeed);
+                }
+                else {
+                    if (enemy.body.velocity.x === 0 && enemy.body.velocity.y === 0) {
+                        enemy.body.velocity.x = game.rnd.integerInRange(-enemySpeed, enemySpeed);
+                        enemy.body.velocity.y = game.rnd.integerInRange(-enemySpeed, enemySpeed);
+                    }
+                }
+            }
+            
         });
     }
 }
 
+function defeat() {
+    muerteJugador.play();
+    alarma.stop();
+    musicanivel.stop();
 
-function spawnEnemies(){
-    if(enemy_count<spawn_limit){
-        game.time.events.add(createEnemies(1), this); // Añade 1 enemigo por cada llamada
-    }
+    groupEnemies.forEach(function(enemy) {
+        enemy.kill();
+    });
+    bulletCount = 20;
+    player.kill();
+    game.time.events.remove(safezonetimer);
+    game.state.start('defeat');
 }
 
-function createEnemies(numb) {
-    for (let i = 0; i < numb; i++) {
-        let enemy = groupEnemies.create(game.rnd.integerInRange(500, WORLD_WIDTH), game.rnd.integerInRange(500, WORLD_HEIGHT), 'alien');
-        enemy.anchor.setTo(0.5, 0.5);
-        game.physics.arcade.enable(enemy);
-        enemy.body.collideWorldBounds = true;
-        enemy.body.bounce.set(1);
-        enemy.body.velocity.x = game.rnd.integerInRange(-enemySpeed, enemySpeed);
-        enemy.body.velocity.y = game.rnd.integerInRange(-enemySpeed, enemySpeed);
-        enemy_count++;
-
-    }
+function victory() {
+    groupEnemies.forEach(function(enemy) {
+        enemy.kill();
+    });
+    bulletCount = 20;
+    player.kill();
+    game.time.events.remove(safezonetimer);
+    game.state.start('victory');
 }
-
-function createAliens (numb) {
-    groupEnemies = game.add.group();
-    groupEnemies.enableBody = true;
-    groupEnemies.createMultiple(numb, 'alien');
-    groupEnemies.callAll('events.onOutOfBounds.add', 'events.onOutOfBounds', resetMember);
-    groupEnemies.callAll('anchor.setTo', 'anchor', 0.5, 0.5);
-    groupEnemies.setAll('checkWorldBounds', true);
-    groupEnemies.callAll('animations.add', 'animations', 'alien', [0, 1], 5, true);
-    groupEnemies.callAll('animations.play', 'animations', 'alien');
-}
-
 
 function pauseGame() {
     gamePaused = true;
@@ -704,8 +855,6 @@ function pauseGame() {
         enemy.body.moves = false;
     });
 
-    // Pausar cualquier otro elemento dinámico si es necesario
-    // ...
 }
 
 function resumeGame() {
@@ -716,57 +865,12 @@ function resumeGame() {
         enemy.body.moves = true;
     });
 
-    // Reanudar cualquier otro elemento dinámico si es necesario
-    // ...
 }
 
-//Tienda
-
-let texthabilidad1;
-let texthabilidad2;
-let texthabilidad3;
-
-/*function Shop(){
-    texthabilidad1=game.add.text(800,1600, 'Press E to buy \n   ('+levelCofig.habilidad1.cost+'habilidad1)',){
-        font: 'bold 13pt TrashCinemaBB',
-        fill: '#F44611',
-        stroke: #000000',
-        strokeThickness: 4,
-    });
-
-    texthabilidad2=game.add.text(680, 1600, 'Press E to buy \n  ('+gameData.habilidad2.cost+'zenis)',{
-        font: 'bold 13pt TrashCinemaBB',
-        fill: '#F44611',
-        stroke: '#000000',
-        strokeThickness: 4,
-        });
-
-    texthabilidad3=game.add.text(930, 1600, 'Press E to buy \n  ('+gameData.habilidad3.cost+'zenis)',{
-        font: 'bold 13pt TrashCinemaBB',
-            fill: '#F44611',
-            stroke: #000000',
-            strokeThickness: 4,
-        });
-    texthabilidad1.anchor.setTo(0.5,0.5);
-    texthabilidad1.anchor.alpha=0;
-
-    texthabilidad2.anchor.setTo(0.5,0.5);
-    texthabilidad2.anchor.alpha=0;
-
-    texthabilidad3.anchor.setTo(0.5,0.5);
-    texthabilidad3.anchor.alpha=0;
-
+function goMainMenu(button) {
+    game.state.start('init');
 }
-function UpdateShop(){
 
+function resetMember(item) {
+    item.kill();
 }
-let habilidad1buy=false;
-function buyhabilidad1(){
-    let habilidad1=game.physics.arcade.distance(player, tp);
-    if (distanciatp<50){
-        texthabilidad1.alpha=1;
-    }
-    else{
-        texthabilidad1.alpha=0;
-    }
-}*/   

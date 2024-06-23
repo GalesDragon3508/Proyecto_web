@@ -12,7 +12,8 @@ function doDefeat() {
     game.add.image(0,0, 'fail');
 
     let textTitle = 'YOU LOSE...';
-    let textMoney = 'MONEY LEFT IN YOUR POCKETS: ' + dinero;
+    let textMoney = 'TOTAL MONEY COLLECTED: ' + dinero;
+    let textWood = 'TOTAL WOOD COLLECTED: ' + madera;
     let textScore = 'ENEMIES DEFEATED: ' + score;
     let textRestart = 'USE ENTER TO RESTART';
     let textMenu = 'MENU';
@@ -25,8 +26,9 @@ function doDefeat() {
 
     game.add.text(GAME_WIDTH/2, 50, textTitle, styleText).anchor.setTo(0.5, 0);
     game.add.text(GAME_WIDTH/2, 150, textMoney, styleText).anchor.setTo(0.5, 0);
-    game.add.text(GAME_WIDTH/2, 250, textScore, styleText).anchor.setTo(0.5, 0);
-    game.add.text(GAME_WIDTH/2, 350, textRestart, styleText).anchor.setTo(0.5, 0);
+    game.add.text(GAME_WIDTH/2, 250, textWood, styleText).anchor.setTo(0.5, 0);
+    game.add.text(GAME_WIDTH/2, 350, textScore, styleText).anchor.setTo(0.5, 0);
+    game.add.text(GAME_WIDTH/2, 450, textRestart, styleText).anchor.setTo(0.5, 0);
 
     let btnMenu = game.add.button(GAME_WIDTH / 2, GAME_HEIGHT - 150, 'btn', goMainMenu);
     btnMenu.scale.setTo(0.5, 0.5);

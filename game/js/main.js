@@ -18,8 +18,6 @@ function startGame() {
     game.state.add('difficultSelection', difficultSelection);
     // Part A Screen
     game.state.add('partA', partAState);
-    // Part B Screen
-    game.state.add('partB', partBState);
 
     game.state.add('victory', victoryState);
 

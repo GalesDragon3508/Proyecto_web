@@ -10,7 +10,7 @@ function loadVictoryAssets() {
 
 function doVictory() {
     musicanivel.stop();
-    game.add.image(0,0, 'win').scale.setTo(1.1,1);
+    game.add.image(0,0, 'win').scale.setTo(1.4,1);
 
     let textTitle = 'LEVEL COMPLETED!!!';
     let textTime = 'TIME PLAYED: ' + timeElapsed/1000;

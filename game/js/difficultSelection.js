@@ -19,7 +19,7 @@ function doDifficultSelection() {
     let textMedium = 'Medium';
     let textHard= 'Hard';
     let textPA = 'Part A';
-
+    let textPB = 'Part B';
 
     let styleTextTitle = {
         fontSize: '28px',

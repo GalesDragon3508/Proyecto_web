@@ -9,7 +9,8 @@ function loadDefeatAssets() {
 }
 
 function doDefeat() {
-    game.add.image(0,0, 'fail');
+    let bg = game.add.image(0,0, 'fail');
+    bg.scale.setTo(1.5,1.5)
     musicanivel.stop();
 
     let textTitle = 'YOU LOSE...';

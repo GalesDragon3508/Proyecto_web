@@ -12,8 +12,6 @@ function startGame() {
     game.state.add('init', initState);
     //Credits Screen
     game.state.add('credits', creditsState);
-    // Options Screen
-    //game.state.add('options', optionsState);
     // Instructions Screen
     game.state.add('instructions', instructionsState);
     // Difficult Selection

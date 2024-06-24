@@ -10,6 +10,7 @@ function loadDefeatAssets() {
 
 function doDefeat() {
     game.add.image(0,0, 'fail');
+    musicanivel.stop();
 
     let textTitle = 'YOU LOSE...';
     let textMoney = 'TOTAL MONEY COLLECTED: ' + dinero;

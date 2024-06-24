@@ -19,7 +19,6 @@ function doDifficultSelection() {
     let textMedium = 'Medium';
     let textHard= 'Hard';
     let textPA = 'Part A';
-    let textPB = 'Part B';
 
 
     let styleTextTitle = {
@@ -60,12 +59,6 @@ function doDifficultSelection() {
     buttonLevelA.anchor.setTo(0.5, 0);
     game.add.text(buttonLevelA.centerX, buttonLevelA.centerY-2, textPA, styleTextButtons).anchor.setTo(0.5, 0.5);
 
-    // BUTTON PART B
-    let buttonLevelB = game.add.button(GAME_WIDTH / 2+ 150, GAME_HEIGHT / 2 - 100, 'btn', playLevelB);
-    buttonLevelB.scale.setTo(0.5,0.5);
-    buttonLevelB.anchor.setTo(0.5, 0);
-    game.add.text(buttonLevelB.centerX, buttonLevelB.centerY-2, textPB, styleTextButtons).anchor.setTo(0.5, 0.5);
-
     // BUTTON BACK
     let buttonLevelSelecBack = game.add.button(GAME_WIDTH / 2, GAME_HEIGHT * 0.8, 'btn', goMainMenu);
     buttonLevelSelecBack.scale.setTo(0.5,0.5);
@@ -76,11 +69,6 @@ function doDifficultSelection() {
 function playLevelA() {
     setDificulty(level_difficulty);
     game.state.start('partA');
-}
-
-function playLevelB() {
-    //setDificulty();
-    game.state.start('partB');
 }
 
 function playEasy() {

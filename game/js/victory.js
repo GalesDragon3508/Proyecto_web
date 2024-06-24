@@ -9,6 +9,7 @@ function loadVictoryAssets() {
 }
 
 function doVictory() {
+    musicanivel.stop();
     game.add.image(0,0, 'win').scale.setTo(1.1,1);
 
     let textTitle = 'LEVEL COMPLETED!!!';

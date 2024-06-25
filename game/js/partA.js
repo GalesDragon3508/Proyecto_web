@@ -125,8 +125,6 @@ function loadImage(){
     game.load.image('moneda', 'assets/imgs/Moneda.png');
     game.load.image('bg', 'assets/imgs/fondo.png');
     game.load.image('safe', 'assets/imgs/safezone.png');
-    game.load.image('hacha', 'assets/imgs/hacha.png');
-    game.load.image('arco', 'assets/imgs/arco.png');
 
 }
 
@@ -149,7 +147,6 @@ function loadAudio(){
 }
 function loadSprite(){
     game.load.spritesheet('alien', 'assets/imgs/alienAnimacion.png', 62, 60, 3);
-    game.load.spritesheet('shoot', 'assets/imgs/anim_arco.png', 63, 110, 1);
     game.load.spritesheet('run', 'assets/imgs/Mimico.png', 50, 90, 3);
     game.load.spritesheet('player', 'assets/imgs/jugador.png', 20, 20, 4);
 
@@ -173,6 +170,7 @@ function doPartA() {
     insafezone = false;
     //Datos del json
     gameData = JSON.parse(game.cache.getText('gameData'));
+
     safeZonegroup = game.add.group();
     safeZonegroup.enableBody = true;
 
@@ -252,7 +250,6 @@ function updatePlayPartA() {
             collectResource(tree)
         });
     }
-    //MODIFICACION SIN INSAFEZONE
     if (insafezone == true && keyR.isDown) {
        reloadBullets();
     }
@@ -270,7 +267,6 @@ function createPlayer(){
     player.animations.
     game.physics.arcade.enable(player)
     player.anchor.setTo(0.5,0.8);
-    //player.scale.setTo(0.75,0.75);
     player.body.collideWorldBounds = true;
     player.body.immovable = true;
     player.bringToTop();
@@ -278,7 +274,7 @@ function createPlayer(){
 
 function createnormalEnemies(numb) {
     for (let i = 0; i < numb; i++) {
-        let enemyData = gameData.normalEnemy[i % gameData.normalEnemy.length]; // Usar el índice del array normalEnemy
+        let enemyData = gameData.normalEnemy[i % gameData.normalEnemy.length]; // Usa el índice del array normalEnemy
         let enemy = groupEnemies.create(
             game.rnd.integerInRange(500, enemyData.startX),
             game.rnd.integerInRange(1200, enemyData.startY),
@@ -317,7 +313,7 @@ function createMimicEnemies(numb) {
         enemy.anchor.setTo(0.5, 0.5);
         game.physics.arcade.enable(enemy);
         enemy.body.collideWorldBounds = true;
-        enemy.body.immovable = true; // El enemigo no se mueve hasta que se convierte
+        enemy.body.immovable = true;
         enemy.body.bounce.set(1);
     }
 }
@@ -348,8 +344,6 @@ function creategrupoDinero(size) {
 
 function createMoney(x, y) {
     let dinero = grupoDinero.getFirstExists(false);
-    //dinero.animations.add('spin', [0, 1], 4, true);
-    //dinero.animations.play('spin');
     if (dinero) {
         dinero.reset(x, y);
     }
@@ -366,7 +360,7 @@ function createTree(){
         let ranX = game.rnd.integerInRange(0, game.world.width);
         let ranY = game.rnd.integerInRange(0, game.world.height);
         tree.reset(ranX, ranY);
-        tree.body.immovable = true; // Hace que los árboles no se muevan al colisionar
+        tree.body.immovable = true;
         tree.treeHP = 3;
         tree.isCollected = false; 
     });
@@ -399,7 +393,6 @@ function createSafeZone() {
     safeZone.height = gameData.safeZones.height;
     safeZone.anchor.setTo(0.5, 0.5);
     safeZone.scale.setTo(1, 1);
-    //game.physics.arcade.enable(safeZone);
     safeZone.body.immovable = true
     n++
 }
@@ -451,7 +444,6 @@ function createHUD() {
     bulletcant.fixedToCamera = true;
     bulletcant.bringToTop();
     
-    //Quizá meterle un if para que aparezca solo cuando esta dentro de la safezone
     safezonetimeleftText = game.add.text(GAME_WIDTH / 4, 10, `TIME LEFT IN SAFE ZONE: ${maxsafezonetime}`, { font: 'bold 15pt Arial', fill: '#F44611', stroke: '#000000', strokeThickness: 4 });
     safezonetimeleftText.fixedToCamera = true;
 
@@ -674,12 +666,10 @@ function reloadBullets() {
                 updateBulletText();
                 setTimeout(reload, 500); // Pausa de medio segundo entre recargas
             } else {
-                isReloading = false; // La recarga ha terminado
+                isReloading = false;
                 resumeGame();
             }
         }
-
-        // Inicia la primera recarga
         reload();
     }
 }
@@ -734,28 +724,26 @@ function managePMovements() {
     let keyS = game.input.keyboard.addKey(Phaser.Keyboard.S);
     let keyD = game.input.keyboard.addKey(Phaser.Keyboard.D);
 
-    // Calcular el ángulo utilizando atan2
+    // Calcular el ángulo
     let angle_rad = Math.atan2(dy, dx);
     let angle_deg = (angle_rad/Math.PI*180) + (angle_rad > 0 ? 0 : 360);
-    // Convertir el ángulo a grados y establecer la rotación del jugador
     player.angle = Phaser.Math.wrapAngle(angle_deg) +90
 
     //Mover el personaje
-    if ((cursors.left.isDown || keyA.isDown)/* && player.x >= gameData.playableZones[n].x1*/){
+    if ((cursors.left.isDown || keyA.isDown)){
         player.x -= 5; // Mueve hacia la izquierda
-    } else if ((cursors.right.isDown || keyD.isDown) /*&& player.x <= gameData.playableZones[n].x2*/) {
+    } else if ((cursors.right.isDown || keyD.isDown)) {
         player.x += 5; // Mueve hacia la derecha
     }
 
-    if ((cursors.up.isDown || keyW.isDown) /*&& player.y <= gameData.playableZones[n].y1*/) {
+    if ((cursors.up.isDown || keyW.isDown)) {
         player.y -= 5; // Mueve hacia arriba
-    } else if ((cursors.down.isDown || keyS.isDown) /*&& player.y >= gameData.playableZones[n].y2*/) {
+    } else if ((cursors.down.isDown || keyS.isDown)) {
         player.y += 5; // Mueve hacia abajo
     }
 
 }
 
-// Función para disparar una bala al hacer clic izquierdo del ratón
 function shootOnLeftClick() {
     if(insafezone == false)
     {
@@ -854,10 +842,6 @@ function updateEnemyMovements() {
             if (enemy.isMimic) {
                 let distanceToPlayer = game.physics.arcade.distanceBetween(player, enemy);
                 if (distanceToPlayer < detectionRadius) {
-                    // Cambiar el sprite y comportamiento a enemigo normal
-                    //enemy.loadTexture('collect', 0);
-                    //enemy.add.animations('run', [0, 1, 2, 3], 8, true)
-                    //enemy.animations.play('run')
                     enemy.isMimic = false;
                     enemy.body.immovable = false;
                     enemy.body.velocity.x = game.rnd.integerInRange(-enemySpeed, enemySpeed);

@@ -11,7 +11,6 @@ let textTimeElapsed; // Text to show the time elapsed
 let timeElapsedEndScreen; // Time elapsed on the end screen
 let currentPart;
 let secondZone = false;
-let purchasedZone=false;
 //Constantes generales
 const LEVEL_ALIEN_PROBABILITY_PART_A = [0.3, 0.6, 0.9];
 const MULT_ALIEN_VELOCITY_PART_A = [1, 1.5, 2.2];
@@ -34,6 +33,8 @@ let controlsUsed = 'keyboard'; // Control to use (default keyboard)
 let objecthitbox
 let lastCollectTime = 0;
 const collectCooldown = 500; // Tiempo de espera en milisegundos para la recolección
+let playerIsMoving = false;
+let alreadyMoving=false
 
 //Variables de los enemigos
 let groupEnemies; // Grupo de enemigos
@@ -96,12 +97,18 @@ let isFiringRateIncreased = false;
 let shopItems = {
     'permanentFiringRate': { cost: 1, purchased: false },
     'increaseMaxBullets': { cost: 1, purchased: false },
-    'AvanzarZona': { cost: 1, purchased: false }
+    'avanzarZona': { cost: 1, purchased: false },
+    get getAvanzarZonaState() {
+        return this.avanzarZona.purchased;
+    },
+    set setAvanzarZona(boolPurchased) {
+        this.avanzarZona.purchased = boolPurchased;
+    }
 };
 const habilidades = {
     'permanentFiringRate': { text: "Increases the rate of fire ", cost: 5, tecla: "B" },
     'increaseMaxBullets': { text: "Increases the maximum number of bullets to 40", cost: 10, tecla: "B" },
-    'AvanzarZona': { text: "Allows to travel to next zone", cost: 10, tecla: "B" }
+    'avanzarZona': { text: "Allows to travel to next zone", cost: 10, tecla: "B" }
 };
 let keyB;
 let bPressedOnce = false;
@@ -115,6 +122,10 @@ let partAState = {
     create: doPartA,
     update: updatePlayPartA
 };
+let logger = "shooty shoot shoot"
+console.log("shooty shoot shoot")
+
+
 function loadImage(){
     game.load.image('Hup', 'assets/imgs/Hup.png');
     game.load.image('bullet', 'assets/imgs/Bala.png');
@@ -152,6 +163,10 @@ function loadSprite(){
     game.load.spritesheet('collect', 'assets/imgs/Mimico.png', 50, 90, 3);
     game.load.spritesheet('player', 'assets/imgs/Jugador2.png', 15, 20, 3);
 
+    //game.load.spritesheet('alien', 'assets/imgs/alienAnimacion.png', 45, 60);
+    //game.load.spritesheet('shoot', 'assets/imgs/anim_arco.png', 63, 110);
+    //game.load.spritesheet('collect', 'assets/imgs/Mimico.png', 50, 90);
+    //game.load.spritesheet('player', 'assets/imgs/Jugador2.png', {frameWidth: 15,frameHeight: 20});
 }
 
 function loadPartAAssets() {
@@ -166,7 +181,8 @@ function doPartA() {
     musicanivel = game.add.audio('musica')
     musicanivel.loop = true;
     musicanivel.play()
-    musicanivel.volume = 0.25 
+    musicanivel.volume = 0.25
+
 
     currentPart = 1;
     insafezone = false;
@@ -179,6 +195,14 @@ function doPartA() {
     let map = game.add.sprite(0,0, gameData.map.image);
     map.scale.setTo(1.3,1)
     game.add.sprite(1720,0,gameData.safeZones.image);
+
+    let movingPlayer;
+
+    //TEMP
+    let sz1 = game.add.image(gameData.safeZones[0].x-250,gameData.safeZones[0].y-250,'safe');
+    sz1.scale.setTo(1, 1);
+    let sz2 = game.add.image(gameData.safeZones[1].x-250,gameData.safeZones[1].y-250,'safe');
+    sz2.scale.setTo(1, 1);
 
     setDificulty(level_difficulty); // Aplica la dificultad seleccionada
     createKeyControls();
@@ -248,16 +272,23 @@ function updatePlayPartA() {
     if (insafezone == true && keyR.isDown) {
        reloadBullets();
     }
-    if(purchasedZone==true){         
-        changeLevel();
-    }
+    /*if(shopItems.avanzarZona.purchased==true){         
+        console.log("trash");
+    }*/
+   //console.log(shopItems.avanzarZona.purchased)
+   console.log(`avanzarZona Purchased: ${shopItems.avanzarZona.purchased}`)
+   console.log(`Max Bullets Purchased: ${shopItems.increaseMaxBullets.purchased}`)
+   //console.log(`Cost: ${}`)
+   console.log(`Madera: ${madera}`)
+   console.log(`If: ${madera>=shopItems.avanzarZona.cost}`)
 }
 
 function createPlayer(){
     player = game.add.sprite(gameData.player.startX, gameData.player.startY, 'player');
     player.scale.setTo(1.5,1.5)
     player.animations.add('move', [0, 1, 2, 3], 8, true);
-    player.animations.play('move');
+    player.animations.add('stand', [0], true);
+    player.animations.play('stand');
     game.physics.arcade.enable(player)
     player.anchor.setTo(0.5,0.8);
     player.scale.setTo(0.75,0.75);
@@ -392,6 +423,7 @@ function createSafeZone() {
     //game.physics.arcade.enable(safeZone);
     safeZone.body.immovable = true
     n++
+    //safeZone.bringToTop();
 }
 
 function createHUD() {
@@ -493,7 +525,7 @@ function BalaHitAlien(bala, alien){
         createLifeItems(x,y);
     }
     enemy_count--;
-    if(score>=100 && secondZone==true){
+    if(score>=100 && secondZone){
         victory();
     }
 }
@@ -673,29 +705,42 @@ function reloadBullets() {
 
 function openShop() {
 
+    console.log('test')
+
     if (insafezone) {
         abrirTienda.play();
         abrirTienda.volume = 0.6
+        console.log('hol');
         if(!unaCompra){
-          if (dinero >= shopItems.permanentFiringRate.cost && !shopItems.permanentFiringRate.purchased) {
+            console.log('ho');
+            if (dinero >= shopItems.permanentFiringRate.cost && !shopItems.permanentFiringRate.purchased) {
                 dinero -= shopItems.permanentFiringRate.cost;
-                updateDineroText();
                 shopItems.permanentFiringRate.purchased = true;
+                console.log("shut");
+                updateDineroText();
+                
+
                 setPermanentFiringRate();
             } else if (dinero >= shopItems.increaseMaxBullets.cost && shopItems.permanentFiringRate.purchased && !shopItems.increaseMaxBullets.purchased) {
                 dinero -= shopItems.increaseMaxBullets.cost;
-                updateDineroText();
                 shopItems.increaseMaxBullets.purchased = true;
+                console.log("bulit");
+                updateDineroText();
+                
+
                 setBulletsAmount();
-            } else if(madera>=shopItems.AvanzarZona.cost){
-                madera-=shopItems.AvanzarZona.cost;
+            }
+            if(true){
+                dinero -= shopItems.avanzarZona.cost;
+                shopItems.setAvanzarZona = true;
+                console.log('hola');
                 updateMaderaText();
                 changeLevel();
-                purchasedZone=true;
-                console.log('hola');
+                
             }
+            
         }
-        unaCompra=true; 
+        unaCompra=true;
     }
 }
 
@@ -740,6 +785,20 @@ function managePMovements() {
         player.y += 5; // Mueve hacia abajo
     }
 
+    if(keyW.isDownn || keyA.isDown || keyS.isDown || keyD.isDown){      //gonna need for animation
+        playerIsMoving=true;
+    }else{playerIsMoving=false;}
+    
+    
+    
+    if(playerIsMoving && alreadyMoving == false) {
+        //console.log("big")
+        player.animations.play('move');
+        alreadyMoving=true;
+    }else{
+        alreadyMoving=false;
+        player.animations.play('stand');
+    }
 }
 
 // Función para disparar una bala al hacer clic izquierdo del ratón
@@ -757,6 +816,7 @@ function shootOnLeftClick() {
                 disparar.volume = 0.5
                 shootBala(player.x, player.y);
                 canShoot = 0;
+                console.log("I shut")
             }
         }
     }
@@ -830,7 +890,7 @@ function changeLevel(){
     groupEnemies.forEach(function(enemy) {
         enemy.kill();
     });
-    changeLevel=true;
+    secondZone=true;
 }
 
 function updateEnemyMovements() {

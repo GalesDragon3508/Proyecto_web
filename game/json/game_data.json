@@ -6,10 +6,11 @@
    },
    "player": {
      "startX": 1920,
-     "startY": 50
+     "startY": 50,
+     "image":""
    },
    "normalEnemy": [
-     { "startX": 2500, "startY": 1500 }
+     { "startX": 2500, "startY": 1500, "image": ""}
    ],
    "mimicEnemy": [
     { "startX": 2500, "startY": 1550 }
@@ -19,7 +20,7 @@
       { "x1": 0, "y1": 1700, "x2": 3840, "y2": 2160 }
     ],
    "safeZones": [
-     { "x": 10, "y": 70, "width": 500, "height": 500, "image": "safe"},
-     { "x": 1500, "y": 70, "width": 500, "height": 500, "image": "safe"}
+     { "x": 250, "y": 250, "width": 500, "height": 500, "image": "safe"},
+     { "x": 1750, "y": 250, "width": 500, "height": 500, "image": "safe"}
    ]
  }

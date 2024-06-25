@@ -95,20 +95,12 @@ let isFiringRateIncreased = false;
 
 //Variables de la tienda
 let shopItems = {
-    'permanentFiringRate': { cost: 1, purchased: false },
-    'increaseMaxBullets': { cost: 1, purchased: false },
-    'avanzarZona': { cost: 1, purchased: false },
-    get getAvanzarZonaState() {
-        return this.avanzarZona.purchased;
-    },
-    set setAvanzarZona(boolPurchased) {
-        this.avanzarZona.purchased = boolPurchased;
-    }
+    'permanentFiringRate': { cost: 5, purchased: false },
+    'increaseMaxBullets': { cost: 10, purchased: false },
 };
 const habilidades = {
     'permanentFiringRate': { text: "Increases the rate of fire ", cost: 5, tecla: "B" },
     'increaseMaxBullets': { text: "Increases the maximum number of bullets to 40", cost: 10, tecla: "B" },
-    'avanzarZona': { text: "Allows to travel to next zone", cost: 10, tecla: "B" }
 };
 let keyB;
 let bPressedOnce = false;
@@ -122,8 +114,7 @@ let partAState = {
     create: doPartA,
     update: updatePlayPartA
 };
-let logger = "shooty shoot shoot"
-console.log("shooty shoot shoot")
+
 
 
 function loadImage(){
@@ -137,6 +128,8 @@ function loadImage(){
     game.load.image('safe', 'assets/imgs/safezone.png');
     game.load.image('hacha', 'assets/imgs/hacha.png');
     game.load.image('arco', 'assets/imgs/arco.png');
+    game.load.image('player', 'assets/imgs/Jugador.png');
+
 
 }
 
@@ -161,7 +154,7 @@ function loadSprite(){
     game.load.spritesheet('alien', 'assets/imgs/alienAnimacion.png', 45, 60, 3);
     game.load.spritesheet('shoot', 'assets/imgs/anim_arco.png', 63, 110, 1);
     game.load.spritesheet('collect', 'assets/imgs/Mimico.png', 50, 90, 3);
-    game.load.spritesheet('player', 'assets/imgs/Jugador2.png', 15, 20, 3);
+    //game.load.spritesheet('player', 'assets/imgs/Jugador.png', 15, 20, 3);
 
     //game.load.spritesheet('alien', 'assets/imgs/alienAnimacion.png', 45, 60);
     //game.load.spritesheet('shoot', 'assets/imgs/anim_arco.png', 63, 110);
@@ -230,8 +223,8 @@ function doPartA() {
 
     safezonetimer = game.time.events.loop(Phaser.Timer.SECOND, updateTimeInSafeZone, this);
     game.camera.follow(player);
-    texto = game.add.text(10, 70, habilidadTextos, { font: '20px Arial', fill: '#ffffff', wordWrap: true, wordWrapWidth: 600 });
-    texto = game.add.text(1500, 70, habilidadTextos, { font: '20px Arial', fill: '#ffffff', wordWrap: true, wordWrapWidth: 600 });
+    texto = game.add.text(25, 70, habilidadTextos, { font: '20px Arial', fill: '#ffffff', wordWrap: true, wordWrapWidth: 500 });
+    texto = game.add.text(1525, 70, habilidadTextos, { font: '20px Arial', fill: '#ffffff', wordWrap: true, wordWrapWidth: 500 });
 }
 
 function updatePlayPartA() {
@@ -272,23 +265,14 @@ function updatePlayPartA() {
     if (insafezone == true && keyR.isDown) {
        reloadBullets();
     }
-    /*if(shopItems.avanzarZona.purchased==true){         
-        console.log("trash");
-    }*/
-   //console.log(shopItems.avanzarZona.purchased)
-   console.log(`avanzarZona Purchased: ${shopItems.avanzarZona.purchased}`)
-   console.log(`Max Bullets Purchased: ${shopItems.increaseMaxBullets.purchased}`)
-   //console.log(`Cost: ${}`)
-   console.log(`Madera: ${madera}`)
-   console.log(`If: ${madera>=shopItems.avanzarZona.cost}`)
 }
 
 function createPlayer(){
-    player = game.add.sprite(gameData.player.startX, gameData.player.startY, 'player');
+    player = game.add.image(gameData.player.startX, gameData.player.startY, 'player');
     player.scale.setTo(1.5,1.5)
-    player.animations.add('move', [0, 1, 2, 3], 8, true);
-    player.animations.add('stand', [0], true);
-    player.animations.play('stand');
+    //player.animations.add('move', [0, 1, 2, 3], 8, true);
+    //player.animations.add('stand', [0], true);
+    //player.animations.play('stand');
     game.physics.arcade.enable(player)
     player.anchor.setTo(0.5,0.8);
     player.scale.setTo(0.75,0.75);
@@ -525,7 +509,7 @@ function BalaHitAlien(bala, alien){
         createLifeItems(x,y);
     }
     enemy_count--;
-    if(score>=100 && secondZone){
+    if(score>=100){
         victory();
     }
 }
@@ -705,38 +689,22 @@ function reloadBullets() {
 
 function openShop() {
 
-    console.log('test')
-
     if (insafezone) {
         abrirTienda.play();
         abrirTienda.volume = 0.6
-        console.log('hol');
         if(!unaCompra){
-            console.log('ho');
             if (dinero >= shopItems.permanentFiringRate.cost && !shopItems.permanentFiringRate.purchased) {
                 dinero -= shopItems.permanentFiringRate.cost;
                 shopItems.permanentFiringRate.purchased = true;
-                console.log("shut");
                 updateDineroText();
                 
-
                 setPermanentFiringRate();
             } else if (dinero >= shopItems.increaseMaxBullets.cost && shopItems.permanentFiringRate.purchased && !shopItems.increaseMaxBullets.purchased) {
                 dinero -= shopItems.increaseMaxBullets.cost;
                 shopItems.increaseMaxBullets.purchased = true;
-                console.log("bulit");
                 updateDineroText();
                 
-
                 setBulletsAmount();
-            }
-            if(true){
-                dinero -= shopItems.avanzarZona.cost;
-                shopItems.setAvanzarZona = true;
-                console.log('hola');
-                updateMaderaText();
-                changeLevel();
-                
             }
             
         }
@@ -883,14 +851,17 @@ function setDificulty(level_difficulty) {
 }
 
 function changeLevel(){
-    spawn_limit=25;
+    spawn_limit = 25;
     player.x = gameData.safeZones[0].x;
     player.y = gameData.safeZones[0].y;
 
     groupEnemies.forEach(function(enemy) {
-        enemy.kill();
+        if (enemy.alive) {
+            enemy.kill();
+        }
     });
-    secondZone=true;
+
+    secondZone = true;
 }
 
 function updateEnemyMovements() {

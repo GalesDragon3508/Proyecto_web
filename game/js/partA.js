@@ -34,6 +34,7 @@ let controlsUsed = 'keyboard'; // Control to use (default keyboard)
 let objecthitbox
 let lastCollectTime = 0;
 const collectCooldown = 500; // Tiempo de espera en milisegundos para la recolección
+let alreadyAdvanced=false;
 
 //Variables de los enemigos
 let groupEnemies; // Grupo de enemigos
@@ -94,14 +95,14 @@ let isFiringRateIncreased = false;
 
 //Variables de la tienda
 let shopItems = {
-    'permanentFiringRate': { cost: 1, purchased: false },
-    'increaseMaxBullets': { cost: 1, purchased: false },
-    'AvanzarZona': { cost: 1, purchased: false }
+    'permanentFiringRate': { cost: 5, purchased: false },
+    'increaseMaxBullets': { cost: 10, purchased: false },
+    'AvanzarZona': { cost: 5, purchased: false }
 };
 const habilidades = {
     'permanentFiringRate': { text: "Increases the rate of fire ", cost: 5, tecla: "B" },
     'increaseMaxBullets': { text: "Increases the maximum number of bullets to 40", cost: 10, tecla: "B" },
-    'AvanzarZona': { text: "Allows to travel to next zone", cost: 10, tecla: "B" }
+    'AvanzarZona': { text: "Allows to travel to next zone", cost: 5, tecla: "B" }
 };
 let keyB;
 let bPressedOnce = false;
@@ -147,10 +148,10 @@ function loadAudio(){
     game.load.audio('szSound', 'assets/snds/zonaSegura.wav');
 }
 function loadSprite(){
-    game.load.spritesheet('alien', 'assets/imgs/alienAnimacion.png', 45, 60, 3);
+    game.load.spritesheet('alien', 'assets/imgs/alienAnimacion.png', 62, 60, 3);
     game.load.spritesheet('shoot', 'assets/imgs/anim_arco.png', 63, 110, 1);
-    game.load.spritesheet('collect', 'assets/imgs/Mimico.png', 50, 90, 3);
-    game.load.spritesheet('player', 'assets/imgs/Jugador2.png', 15, 20, 3);
+    game.load.spritesheet('run', 'assets/imgs/Mimico.png', 50, 90, 3);
+    game.load.spritesheet('player', 'assets/imgs/jugador.png', 20, 20, 4);
 
 }
 
@@ -178,6 +179,12 @@ function doPartA() {
     game.world.setBounds(0, 0, gameData.map.width, gameData.map.height);
     let map = game.add.sprite(0,0, gameData.map.image);
     map.scale.setTo(1.3,1)
+
+    let sz1 = game.add.image(gameData.safeZones[0].x-250,gameData.safeZones[0].y-250,'safe');
+    sz1.scale.setTo(1, 1);
+    let sz2 = game.add.image(gameData.safeZones[1].x-250,gameData.safeZones[1].y-250,'safe');
+    sz2.scale.setTo(1, 1);
+
     game.add.sprite(1720,0,gameData.safeZones.image);
 
     setDificulty(level_difficulty); // Aplica la dificultad seleccionada
@@ -191,6 +198,7 @@ function doPartA() {
     createLifeItems();
     creategrupoDinero(NCOIN);
     createSafeZoneGroup();
+
 
     recargaMunicion = game.add.sound('recarga');
     muerteJugador = game.add.sound('muerte');
@@ -206,8 +214,8 @@ function doPartA() {
 
     safezonetimer = game.time.events.loop(Phaser.Timer.SECOND, updateTimeInSafeZone, this);
     game.camera.follow(player);
-    texto = game.add.text(10, 70, habilidadTextos, { font: '20px Arial', fill: '#ffffff', wordWrap: true, wordWrapWidth: 600 });
-    texto = game.add.text(1500, 70, habilidadTextos, { font: '20px Arial', fill: '#ffffff', wordWrap: true, wordWrapWidth: 600 });
+    texto = game.add.text(25, 70, habilidadTextos, { font: '20px Arial', fill: '#ffffff', wordWrap: true, wordWrapWidth: 500 });
+    texto = game.add.text(1525, 70, habilidadTextos, { font: '20px Arial', fill: '#ffffff', wordWrap: true, wordWrapWidth: 500 });
 }
 
 function updatePlayPartA() {
@@ -248,19 +256,21 @@ function updatePlayPartA() {
     if (insafezone == true && keyR.isDown) {
        reloadBullets();
     }
-    if(purchasedZone==true){         
+    if(purchasedZone==true && !alreadyAdvanced){         
+        alreadyAdvanced=true;
         changeLevel();
     }
 }
 
 function createPlayer(){
     player = game.add.sprite(gameData.player.startX, gameData.player.startY, 'player');
-    player.scale.setTo(1.5,1.5)
+    player.scale.setTo(1.5,1.5);
     player.animations.add('move', [0, 1, 2, 3], 8, true);
     player.animations.play('move');
+    player.animations.
     game.physics.arcade.enable(player)
     player.anchor.setTo(0.5,0.8);
-    player.scale.setTo(0.75,0.75);
+    //player.scale.setTo(0.75,0.75);
     player.body.collideWorldBounds = true;
     player.body.immovable = true;
     player.bringToTop();
@@ -338,8 +348,8 @@ function creategrupoDinero(size) {
 
 function createMoney(x, y) {
     let dinero = grupoDinero.getFirstExists(false);
-    dinero.animations.add('spin', [0, 1], 4, true);
-    dinero.animations.play('spin');
+    //dinero.animations.add('spin', [0, 1], 4, true);
+    //dinero.animations.play('spin');
     if (dinero) {
         dinero.reset(x, y);
     }
@@ -594,9 +604,13 @@ function resetGame() {
     n = 0
     unaCompra=false;
     secondZone=false;
+    alreadyAdvanced=false;
     spawn_limit=20;
     shootDelay = 200;
     maxBullets = 20;
+    shopItems.permanentFiringRate.purchased = false;
+    purchasedZone=false;
+    shopItems.increaseMaxBullets.purchased = false;    
 }
 
 function updateBulletText() {
@@ -687,12 +701,11 @@ function openShop() {
                 updateDineroText();
                 shopItems.increaseMaxBullets.purchased = true;
                 setBulletsAmount();
-            } else if(madera>=shopItems.AvanzarZona.cost){
+            } else if(madera>=shopItems.AvanzarZona.cost && !purchasedZone){
                 madera-=shopItems.AvanzarZona.cost;
                 updateMaderaText();
                 changeLevel();
                 purchasedZone=true;
-                console.log('hola');
             }
         }
         unaCompra=true; 
@@ -828,9 +841,11 @@ function changeLevel(){
     player.y = gameData.safeZones[0].y;
 
     groupEnemies.forEach(function(enemy) {
-        enemy.kill();
+        if(enemy.alive){
+            enemy.kill();
+        }
     });
-    changeLevel=true;
+    secondZone=true;
 }
 
 function updateEnemyMovements() {
@@ -840,9 +855,9 @@ function updateEnemyMovements() {
                 let distanceToPlayer = game.physics.arcade.distanceBetween(player, enemy);
                 if (distanceToPlayer < detectionRadius) {
                     // Cambiar el sprite y comportamiento a enemigo normal
-                    enemy.loadTexture('collect', 0);
-                    enemy.add.animations('run', [0, 1, 2, 3], 8, true)
-                    enemy.animations.play('run')
+                    //enemy.loadTexture('collect', 0);
+                    //enemy.add.animations('run', [0, 1, 2, 3], 8, true)
+                    //enemy.animations.play('run')
                     enemy.isMimic = false;
                     enemy.body.immovable = false;
                     enemy.body.velocity.x = game.rnd.integerInRange(-enemySpeed, enemySpeed);

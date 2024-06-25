@@ -14,8 +14,8 @@ function doDefeat() {
     musicanivel.stop();
 
     let textTitle = 'YOU LOSE...';
-    let textMoney = 'TOTAL MONEY COLLECTED: ' + dinero;
-    let textWood = 'TOTAL WOOD COLLECTED: ' + madera;
+    let textMoney = 'MONEY LEFT COLLECTED: ' + dinero;
+    let textWood = 'WOOD LEFT COLLECTED: ' + madera;
     let textScore = 'ENEMIES DEFEATED: ' + score;
     let textRestart = 'USE ENTER TO RESTART';
     let textMenu = 'MENU';

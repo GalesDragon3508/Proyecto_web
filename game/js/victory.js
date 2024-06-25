@@ -16,8 +16,8 @@ function doVictory() {
     let textTime = 'TIME PLAYED: ' + timeElapsed/1000;
     let textScore = 'SCORE: ' + score;
     let textHP = 'HP LEFT: ' + lifeCounter;
-    let textMoney = 'TOTAL MONEY COLLECTED: ' + dinero;
-    let textWood = 'TOTAL WOOD COLLECTED:' + madera;
+    let textMoney = 'MONEY LEFT COLLECTED: ' + dinero;
+    let textWood = 'WOOD LEFT COLLECTED: ' + madera;
     let textRestart = 'USE ENTER TO RESTART';
     let textMenu = 'MENU';
 

@@ -19,7 +19,7 @@
       { "x1": 0, "y1": 1700, "x2": 3840, "y2": 2160 }
     ],
    "safeZones": [
-     { "x": 2500, "y": 450, "width": 500, "height": 500, "image": "safe"},
-     { "x": 2000, "y": 450, "width": 500, "height": 500, "image": "safe"}
+     { "x": 250, "y": 250, "width": 500, "height": 500, "image": "safe"},
+     { "x": 1750, "y": 250, "width": 500, "height": 500, "image": "safe"}
    ]
  }
